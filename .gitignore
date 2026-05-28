@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual env
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Debug
+debug.log
+*.log
+
+# Evaluation outputs
+evaluation_report.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
