@@ -328,6 +328,33 @@ def admin_llm_test():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+
+# ============================================================
+# 提示词管理路由
+# ============================================================
+@app.route('/admin/prompt')
+def admin_prompt():
+    """提示词配置页面"""
+    from admin_service import load_prompt, DEFAULT_SYSTEM_PROMPT
+    prompt = load_prompt()
+    return render_template('admin_prompt.html',
+                           prompt=prompt,
+                           default_prompt=DEFAULT_SYSTEM_PROMPT)
+
+
+@app.route('/admin/prompt/save', methods=['POST'])
+def admin_prompt_save():
+    """保存提示词"""
+    from admin_service import save_prompt
+    try:
+        data = request.json
+        prompt = data.get('prompt', '')
+        save_prompt(prompt)
+        return jsonify({'success': True, 'message': '提示词已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 50)
     print("泰小虎智能健康导购助手")
