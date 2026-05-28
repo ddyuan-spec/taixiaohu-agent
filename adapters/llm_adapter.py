@@ -11,7 +11,9 @@ from dataclasses import dataclass, field
 # ============================================================
 # 配置管理
 # ============================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(BASE_DIR) == 'adapters':
+    BASE_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 LLM_CONFIG_FILE = os.path.join(DATA_DIR, "llm_config.json")
 
