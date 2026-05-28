@@ -1209,6 +1209,16 @@ class TaiXiaoHuAgent:
             if keyword in query:
                 return advice
 
+        # ---- 扩展：从上传的知识库中搜索 ----
+        try:
+            from admin_service import knowledge_service
+            results = knowledge_service.search_chunks(query, top_k=1)
+            if results:
+                chunk = results[0]
+                return f"关于【{chunk.get('title', '知识库')}】：{chunk['content']}"
+        except Exception:
+            pass
+
         return None
 
     def _generate_symptom_summary(self) -> Dict:
@@ -1842,7 +1852,9 @@ class TaiXiaoHuAgent:
         }
 
     def clear_session(self):
-        """清空会话"""
+        """清空会话（清空前保存画像和会话记录）"""
+        # 保存当前会话的画像和消息
+        self._save_profile_and_session()
         self.messages.clear()
         self.state = SessionState.WELCOME
         self.current_intent = None
@@ -1852,6 +1864,43 @@ class TaiXiaoHuAgent:
         self.intent_deny_count = 0
         self.refusal_count = 0
         self.context_summary = ""
+
+    def _save_profile_and_session(self):
+        """将当前画像和会话记录保存到 JSON 文件"""
+        try:
+            from admin_service import profile_service, session_service
+
+            # 生成用户 ID（基于会话内容哈希或使用默认）
+            user_id = getattr(self, '_user_id', None)
+            if not user_id:
+                import hashlib
+                # 使用第一条用户消息生成用户ID
+                first_user_msg = ""
+                for m in self.messages:
+                    if m.role == "user":
+                        first_user_msg = m.content[:50]
+                        break
+                if first_user_msg:
+                    user_id = "user_" + hashlib.md5(first_user_msg.encode()).hexdigest()[:8]
+                else:
+                    user_id = "user_anonymous"
+                self._user_id = user_id
+
+            # 保存画像
+            profile = self.user_profile.to_dict()
+            profile_service.create_or_update_profile(user_id, profile)
+
+            # 保存会话记录
+            if self.messages:
+                session_messages = [msg.to_dict() for msg in self.messages]
+                session_service.add_session(user_id, session_messages)
+
+        except Exception:
+            pass  # 静默失败，不影响主流程
+
+    def save_current_profile(self):
+        """手动保存当前画像（供外部调用）"""
+        self._save_profile_and_session()
 
     def start_profile_collect(self):
         """开始画像收集"""

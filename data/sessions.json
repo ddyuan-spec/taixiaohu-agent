@@ -1,0 +1,52 @@
+[
+  {
+    "id": "c9e6170c",
+    "user_id": "user_5ab1a57f",
+    "messages": [
+      {
+        "role": "user",
+        "content": "肚子痛",
+        "timestamp": "2026-05-28T11:27:32.102614",
+        "metadata": {},
+        "intent": null
+      },
+      {
+        "role": "assistant",
+        "content": "关于您说的【肚子痛】，这种情况多久了？如果1到10分，您觉得有多难受？",
+        "timestamp": "2026-05-28T11:27:32.117712",
+        "metadata": {},
+        "intent": "health_consult"
+      },
+      {
+        "role": "user",
+        "content": "5分",
+        "timestamp": "2026-05-28T11:27:36.162325",
+        "metadata": {},
+        "intent": "health_consult"
+      },
+      {
+        "role": "assistant",
+        "content": "关于您说的【肚子痛】，这种情况大概持续多久了？如果1到10分，您觉得有多难受？",
+        "timestamp": "2026-05-28T11:27:36.163356",
+        "metadata": {},
+        "intent": "health_consult"
+      },
+      {
+        "role": "user",
+        "content": "5",
+        "timestamp": "2026-05-28T11:27:40.053918",
+        "metadata": {},
+        "intent": "health_consult"
+      },
+      {
+        "role": "assistant",
+        "content": "【症状总结】\n主要不适：肚子痛\n持续时间及程度：5分\n伴随症状：5\n\n【健康建议】\n针对您的情况，建议：\n• 注意腹部保暖，避免受凉\n• 少食多餐，避免暴饮暴食\n• 饮食清淡，少吃油腻辛辣食物\n如果症状持续或加重，请及时就医检查。\n\n【推荐产品】\n1.【益生菌粉】\n  功效：调节肠道菌群平衡，促进消化吸收\n  适用人群：消化不良、肠胃功能较弱的人群\n  服用方法：每日1次，每次1袋，温水冲服\n\n温馨提示：我的建议仅供参考，不能代替医生的专业诊断。如果身体不适，请及时到正规医院就诊。",
+        "timestamp": "2026-05-28T11:27:40.062917",
+        "metadata": {},
+        "intent": "health_consult"
+      }
+    ],
+    "message_count": 6,
+    "created_at": "2026-05-28T11:27:49.887424"
+  }
+]

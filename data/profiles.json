@@ -1,0 +1,16 @@
+[
+  {
+    "user_id": "user_5ab1a57f",
+    "name": "",
+    "age": 0,
+    "gender": "",
+    "chronic_diseases": "",
+    "allergy_history": "",
+    "current_medication": "",
+    "health_concerns": "",
+    "completeness": 0.0,
+    "history": [],
+    "created_at": "2026-05-28T11:27:49.885424",
+    "updated_at": "2026-05-28T11:27:49.885424"
+  }
+]
