@@ -289,6 +289,45 @@ def admin_save_session():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+
+
+# ============================================================
+# LLM 模型配置路由
+# ============================================================
+@app.route('/admin/llm')
+def admin_llm():
+    """LLM 模型配置页面"""
+    from adapters.llm_adapter import llm_adapter, PRESET_MODELS
+    config = llm_adapter.get_safe_config()
+    return render_template('admin_llm.html',
+                           config=config,
+                           preset_models=PRESET_MODELS)
+
+
+@app.route('/admin/llm/config', methods=['POST'])
+def admin_llm_config():
+    """保存 LLM 配置"""
+    from adapters.llm_adapter import llm_adapter, save_llm_config
+    try:
+        data = request.json
+        save_llm_config(data)
+        llm_adapter.reload_config()
+        return jsonify({'success': True, 'message': '配置已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/admin/llm/test', methods=['POST'])
+def admin_llm_test():
+    """测试 LLM 连接"""
+    from adapters.llm_adapter import llm_adapter
+    try:
+        llm_adapter.reload_config()
+        result = llm_adapter.test_connection()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 50)
     print("泰小虎智能健康导购助手")
