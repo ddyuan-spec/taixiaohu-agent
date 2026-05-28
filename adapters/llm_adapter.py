@@ -209,7 +209,7 @@ class LLMAdapter:
         if not self.config.get("api_key", ""):
             return {"success": False, "message": "请先配置 API Key"}
 
-        messages = [{"role": "user", "content": "你好，请回复"连接成功""}]
+        messages = [{"role": "user", "content": "你好，请回复'连接成功'"}]
         result = self.chat(messages, max_tokens=20)
 
         if result.success:
