@@ -21,6 +21,12 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+# LLM 閫傞厤鍣紙鍙€夛級
+try:
+    from adapters.llm_adapter import llm_adapter
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
 
 
 # ============================================================
@@ -370,6 +376,39 @@ class TaiXiaoHuAgent:
     # --------------------------------------------------------
     # 主入口
     # --------------------------------------------------------
+
+    
+    def _call_llm(self, user_message: str, system_prompt: str = None) -> Optional[str]:
+        """璋冪敤鐪熷疄 LLM 鑾峰彇鍥炲"""
+        if not LLM_AVAILABLE:
+            return None
+
+        llm_adapter.reload_config()
+        if not llm_adapter.is_enabled:
+            return None
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        else:
+            messages.append({"role": "system", "content": SYSTEM_PROMPT})
+
+        # 娣诲姞鏈€杩戠殑瀵硅瘽鍘嗗彶
+        recent = self.messages[-20:] if len(self.messages) > 20 else self.messages
+        for msg in recent:
+            messages.append({"role": msg.role, "content": msg.content})
+
+        # 娣诲姞褰撳墠鐢ㄦ埛娑堟伅
+        messages.append({"role": "user", "content": user_message})
+
+        result = llm_adapter.chat(messages)
+        if result.success:
+            return result.content
+        else:
+            print(f"[LLM Error] {result.error}")
+            if llm_adapter.config.get("fallback_to_mock", True):
+                return None
+            return f"鎶辨瓑锛屾垜鐜板湪閬囧埌浜嗕竴浜涙妧鏈棶棰橈細{result.error}"
 
     def process_message(self, user_input: str, intent: Optional[str] = None) -> Dict:
         """
