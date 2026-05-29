@@ -328,6 +328,19 @@ def admin_llm():
                            preset_models=PRESET_MODELS)
 
 
+
+@app.route('/admin/llm/pull', methods=['POST'])
+def admin_llm_pull():
+    """从GitHub手动拉取LLM配置"""
+    from adapters.llm_adapter import pull_llm_config_from_github, llm_adapter
+    try:
+        result = pull_llm_config_from_github()
+        if result['success']:
+            llm_adapter.reload_config()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'拉取失败: {str(e)}'})
+
 @app.route('/admin/llm/config', methods=['POST'])
 def admin_llm_config():
     """保存 LLM 配置"""
