@@ -1,6 +1,6 @@
 """
-后台管理系统 - 数据服务层 (修复版)
-支持从GitHub加载预置知识库，解决Render临时磁盘问题
+后台管理系统 - 数据服务层 V2 (强制GitHub重载版)
+解决Render临时磁盘问题：每次启动从GitHub加载预置知识库
 """
 import json
 import os
@@ -19,7 +19,7 @@ KNOWLEDGE_FILE = os.path.join(DATA_DIR, "knowledge.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
 SESSIONS_FILE = os.path.join(DATA_DIR, "sessions.json")
 
-# GitHub 预置知识库配置
+# GitHub 预置知识库URL（Raw格式）
 GITHUB_KNOWLEDGE_URL = "https://raw.githubusercontent.com/ddyuan-spec/taixiaohu-agent/main/data/knowledge.json"
 
 def _ensure_data_dir():
@@ -33,7 +33,8 @@ def _load_json(filepath: str, default: Any = None) -> Any:
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
-    except (json.JSONDecodeError, IOError):
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"[LoadJSON] 加载失败 {filepath}: {e}")
         return default if default is not None else []
 
 def _save_json(filepath: str, data: Any):
@@ -42,49 +43,95 @@ def _save_json(filepath: str, data: Any):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def _load_preset_knowledge():
-    """从GitHub加载预置知识库（如果本地为空）"""
+def _force_load_from_github() -> List[Dict]:
+    """
+    强制从GitHub加载知识库
+    这是解决Render临时磁盘问题的关键函数
+    """
     try:
-        # 检查本地是否已有知识库
-        local_chunks = _load_json(KNOWLEDGE_FILE, [])
-        if local_chunks:
-            print(f"[KnowledgeService] 本地知识库已有 {len(local_chunks)} 个切片，跳过预置加载")
-            return
+        print(f"[KnowledgeLoader] 正在从GitHub加载知识库...")
+        print(f"[KnowledgeLoader] URL: {GITHUB_KNOWLEDGE_URL}")
         
-        # 从GitHub加载
-        print(f"[KnowledgeService] 本地知识库为空，尝试从GitHub加载预置数据...")
-        response = requests.get(GITHUB_KNOWLEDGE_URL, timeout=10)
+        response = requests.get(
+            GITHUB_KNOWLEDGE_URL, 
+            timeout=15,
+            headers={'Cache-Control': 'no-cache'}
+        )
+        
         if response.status_code == 200:
-            preset_chunks = response.json()
-            if isinstance(preset_chunks, list) and len(preset_chunks) > 0:
-                _save_json(KNOWLEDGE_FILE, preset_chunks)
-                print(f"[KnowledgeService] 成功从GitHub加载 {len(preset_chunks)} 个预置切片")
+            chunks = response.json()
+            if isinstance(chunks, list) and len(chunks) > 0:
+                # 保存到本地文件
+                _save_json(KNOWLEDGE_FILE, chunks)
+                print(f"[KnowledgeLoader] ✅ 成功加载 {len(chunks)} 个切片")
+                # 打印前5个切片标题用于验证
+                for i, chunk in enumerate(chunks[:5], 1):
+                    print(f"[KnowledgeLoader]   {i}. {chunk.get('title', '无标题')[:50]}")
+                if len(chunks) > 5:
+                    print(f"[KnowledgeLoader]   ... 还有 {len(chunks)-5} 个切片")
+                return chunks
             else:
-                print(f"[KnowledgeService] GitHub知识库为空或格式错误")
+                print(f"[KnowledgeLoader] ⚠️ GitHub数据为空或格式错误")
+                return []
         else:
-            print(f"[KnowledgeService] 从GitHub加载失败: HTTP {response.status_code}")
+            print(f"[KnowledgeLoader] ❌ HTTP错误: {response.status_code}")
+            return []
     except Exception as e:
-        print(f"[KnowledgeService] 加载预置知识库失败: {e}")
+        print(f"[KnowledgeLoader] ❌ 加载异常: {e}")
+        return []
 
 # ============================================================
 # 知识库服务
 # ============================================================
 class KnowledgeService:
-    """知识库切片管理服务"""
+    """知识库切片管理服务 - V2强制重载版"""
+    
+    _cached_chunks: List[Dict] = []  # 类级缓存
+    _loaded: bool = False  # 是否已加载标记
+    
     def __init__(self):
         _ensure_data_dir()
-        # 启动时尝试加载预置知识库
-        _load_preset_knowledge()
+        # 每次实例化都强制从GitHub加载（确保Render重启后能恢复数据）
+        self._load_knowledge()
+    
+    def _load_knowledge(self):
+        """加载知识库：优先从GitHub强制加载"""
+        if not KnowledgeService._loaded:
+            # 第一次加载：强制从GitHub获取
+            chunks = _force_load_from_github()
+            if chunks:
+                KnowledgeService._cached_chunks = chunks
+                KnowledgeService._loaded = True
+            else:
+                # GitHub失败，尝试本地文件
+                print(f"[KnowledgeService] GitHub加载失败，尝试本地文件...")
+                KnowledgeService._cached_chunks = _load_json(KOWLEDGE_FILE, [])
+                KnowledgeService._loaded = True
+        else:
+            # 已加载过，检查本地文件是否存在（可能被清空）
+            local_chunks = _load_json(KNOWLEDGE_FILE, [])
+            if not local_chunks and KnowledgeService._cached_chunks:
+                # 本地为空但缓存有数据，恢复本地文件
+                print(f"[KnowledgeService] 本地文件为空，从缓存恢复 {len(KnowledgeService._cached_chunks)} 个切片")
+                _save_json(KNOWLEDGE_FILE, KnowledgeService._cached_chunks)
+            elif local_chunks:
+                # 本地有数据，更新缓存
+                KnowledgeService._cached_chunks = local_chunks
     
     def get_all_chunks(self) -> List[Dict]:
         """获取所有知识切片"""
-        return _load_json(KNOWLEDGE_FILE, [])
+        # 每次获取都检查本地文件
+        local = _load_json(KNOWLEDGE_FILE, [])
+        if local:
+            return local
+        # 本地为空，返回缓存
+        return KnowledgeService._cached_chunks
     
     def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict]:
         """根据 ID 获取切片"""
         chunks = self.get_all_chunks()
         for chunk in chunks:
-            if chunk["id"] == chunk_id:
+            if chunk.get("id") == chunk_id:
                 return chunk
         return None
     
@@ -102,41 +149,39 @@ class KnowledgeService:
         }
         chunks.append(chunk)
         _save_json(KNOWLEDGE_FILE, chunks)
+        KnowledgeService._cached_chunks = chunks
         return chunk
     
     def delete_chunk(self, chunk_id: str) -> bool:
         """删除切片"""
         chunks = self.get_all_chunks()
-        new_chunks = [c for c in chunks if c["id"] != chunk_id]
+        new_chunks = [c for c in chunks if c.get("id") != chunk_id]
         if len(new_chunks) == len(chunks):
             return False
         _save_json(KNOWLEDGE_FILE, new_chunks)
+        KnowledgeService._cached_chunks = new_chunks
         return True
     
     def increment_call_count(self, chunk_id: str):
         """增加切片调用次数"""
         chunks = self.get_all_chunks()
         for chunk in chunks:
-            if chunk["id"] == chunk_id:
+            if chunk.get("id") == chunk_id:
                 chunk["call_count"] = chunk.get("call_count", 0) + 1
                 chunk["last_called"] = datetime.now().isoformat()
                 break
         _save_json(KNOWLEDGE_FILE, chunks)
+        KnowledgeService._cached_chunks = chunks
     
     def upload_and_slice(self, file_content: str, filename: str) -> List[Dict]:
-        """
-        上传文件并自动切片
-        支持 .txt, .md, .csv, .json
-        """
+        """上传文件并自动切片"""
         chunks = self.get_all_chunks()
         new_chunks = []
         
-        # 根据文件类型解析内容
         text_content = self._parse_file_content(file_content, filename)
         if not text_content.strip():
             return []
         
-        # 切片：每 200-500 字一个切片
         sliced_texts = self._slice_text(text_content)
         
         for i, text in enumerate(sliced_texts):
@@ -153,13 +198,11 @@ class KnowledgeService:
             new_chunks.append(chunk)
         
         _save_json(KNOWLEDGE_FILE, chunks)
+        KnowledgeService._cached_chunks = chunks
         return new_chunks
     
     def search_chunks(self, query: str, top_k: int = 3) -> List[Dict]:
-        """
-        从上传的知识库中搜索相关切片（关键词匹配）
-        用于 agent._get_knowledge_fallback 的扩展搜索
-        """
+        """搜索相关切片"""
         chunks = self.get_all_chunks()
         if not chunks:
             return []
@@ -172,18 +215,15 @@ class KnowledgeService:
             content = chunk.get("content", "")
             title = chunk.get("title", "")
             
-            # 标题匹配
             if query in title:
                 score += 10
             
-            # 内容匹配 - 逐词匹配
             query_words = re.split(r'[\s，。、；：！？,.;:!?]+', query)
             query_words = [w for w in query_words if len(w) >= 2]
             for word in query_words:
                 if word in content:
-                    score += len(word)  # 匹配词越长，权重越高
+                    score += len(word)
             
-            # 字符重叠度
             overlap = len(query_chars & set(content))
             if len(query_chars) > 0:
                 score += overlap / len(query_chars) * 5
@@ -191,11 +231,9 @@ class KnowledgeService:
             if score > 0:
                 scored.append((score, chunk))
         
-        # 按分数排序
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [chunk for _, chunk in scored[:top_k]]
         
-        # 更新调用次数
         for chunk in results:
             self.increment_call_count(chunk["id"])
         
@@ -206,7 +244,6 @@ class KnowledgeService:
         chunks = self.get_all_chunks()
         total_calls = sum(c.get("call_count", 0) for c in chunks)
         
-        # 今日调用次数
         today = datetime.now().strftime("%Y-%m-%d")
         today_calls = sum(
             1 for c in chunks
@@ -246,11 +283,7 @@ class KnowledgeService:
             return content
     
     def _slice_text(self, text: str, min_len: int = 200, max_len: int = 500) -> List[str]:
-        """
-        将文本切片，每 200-500 字一个切片
-        优先在句号、换行等位置切分
-        """
-        # 先按段落分割
+        """将文本切片"""
         paragraphs = re.split(r'\n{2,}|\r\n{2,}', text)
         paragraphs = [p.strip() for p in paragraphs if p.strip()]
         
@@ -259,19 +292,14 @@ class KnowledgeService:
         
         for para in paragraphs:
             if len(current) + len(para) + 1 <= max_len:
-                if current:
-                    current += "\n" + para
-                else:
-                    current = para
+                current = current + "\n" + para if current else para
             else:
-                # 当前段落加入后会超长，先保存当前内容
                 if current:
                     if len(current) < min_len and slices:
                         slices[-1] += "\n" + current
                     else:
                         slices.append(current)
                 
-                # 处理超长段落：在句号处切分
                 if len(para) > max_len:
                     sub_slices = self._split_long_paragraph(para, max_len)
                     slices.extend(sub_slices[:-1])
@@ -302,7 +330,6 @@ class KnowledgeService:
             else:
                 if current:
                     slices.append(current)
-                # 如果单句超长，强制切分
                 if len(sent) > max_len:
                     for i in range(0, len(sent), max_len):
                         slices.append(sent[i:i + max_len])
@@ -331,7 +358,7 @@ class ProfileService:
         """根据用户 ID 获取画像"""
         profiles = self.get_all_profiles()
         for p in profiles:
-            if p["user_id"] == user_id:
+            if p.get("user_id") == user_id:
                 return p
         return None
     
@@ -340,14 +367,13 @@ class ProfileService:
         profiles = self.get_all_profiles()
         existing = None
         for p in profiles:
-            if p["user_id"] == user_id:
+            if p.get("user_id") == user_id:
                 existing = p
                 break
         
         now = datetime.now().isoformat()
         
         if existing:
-            # 记录变更历史
             history = existing.get("history", [])
             for key, new_value in updates.items():
                 if key in ("user_id", "history", "created_at", "updated_at"):
@@ -361,9 +387,8 @@ class ProfileService:
                         "time": now,
                         "reason": "会话更新"
                     })
-            existing["history"] = history[-50:]  # 保留最近50条
+            existing["history"] = history[-50:]
             
-            # 更新字段
             for key, value in updates.items():
                 if key not in ("user_id", "created_at"):
                     existing[key] = value
@@ -407,12 +432,7 @@ class ProfileService:
         """获取画像统计"""
         profiles = self.get_all_profiles()
         
-        # 完整度分布
-        distribution = {
-            "low": 0,       # 0-30%
-            "medium": 0,    # 30-70%
-            "high": 0       # 70-100%
-        }
+        distribution = {"low": 0, "medium": 0, "high": 0}
         
         for p in profiles:
             c = p.get("completeness", 0)
@@ -477,7 +497,7 @@ class SessionService:
         """根据 ID 获取会话"""
         sessions = self.get_all_sessions()
         for s in sessions:
-            if s["id"] == session_id:
+            if s.get("id") == session_id:
                 return s
         return None
 
