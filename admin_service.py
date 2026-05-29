@@ -105,7 +105,7 @@ class KnowledgeService:
             else:
                 # GitHub失败，尝试本地文件
                 print(f"[KnowledgeService] GitHub加载失败，尝试本地文件...")
-                KnowledgeService._cached_chunks = _load_json(KOWLEDGE_FILE, [])
+                KnowledgeService._cached_chunks = _load_json(KNOWLEDGE_FILE, [])
                 KnowledgeService._loaded = True
         else:
             # 已加载过，检查本地文件是否存在（可能被清空）
