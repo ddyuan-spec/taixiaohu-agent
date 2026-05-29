@@ -87,6 +87,33 @@
             right: 20px;
             z-index: 9999;
         }
+        .github-pull-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s;
+        }
+        .github-pull-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        .github-pull-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -107,29 +134,40 @@
                     <a href="/admin/profiles" class="nav-link">
                         <i class="bi bi-people"></i> 用户画像
                     </a>
-                                        <a href="/admin/llm" class="nav-link">
-                        <i class="bi bi-cpu"></i> 妯″瀷閰嶇疆
+                    <a href="/admin/llm" class="nav-link">
+                        <i class="bi bi-cpu"></i> 模型配置
                     </a>
-                                        <a href="/admin/prompt" class="nav-link">
+                    <a href="/admin/prompt" class="nav-link">
                         <i class="bi bi-chat-left-text"></i> 提示词配置
                     </a>
-
                     <a href="/" class="nav-link">
                         <i class="bi bi-chat-dots"></i> 返回前台
                     </a>
                 </nav>
             </div>
-
             <!-- 主内容区 -->
             <div class="col-md-10 p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4>知识库管理</h4>
-                    <div>
-                        <span class="badge bg-primary me-2">切片总数: {{ stats.total_chunks }}</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <!-- GitHub拉取按钮 -->
+                        <button class="btn github-pull-btn btn-sm" id="githubPullBtn" onclick="pullFromGitHub()">
+                            <i class="bi bi-github me-1"></i>从GitHub拉取知识库
+                        </button>
+                        <span class="badge bg-primary">切片总数: {{ stats.total_chunks }}</span>
                         <span class="badge bg-success">今日调用: {{ stats.today_calls }}</span>
                     </div>
                 </div>
-
+                
+                <!-- 提示信息 -->
+                {% if stats.total_chunks == 0 %}
+                <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>知识库为空！</strong> Render免费版会定期清空数据。请点击上方"从GitHub拉取知识库"按钮恢复数据。
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+                
                 <!-- 上传区域 -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-7">
@@ -168,7 +206,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- 切片列表 -->
                 <div class="card content-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -219,6 +256,9 @@
                         <div class="text-center py-5">
                             <i class="bi bi-inbox" style="font-size:3rem; color:#ccc;"></i>
                             <p class="text-muted mt-3">暂无知识切片，请上传文件或手动添加</p>
+                            <button class="btn github-pull-btn mt-2" onclick="pullFromGitHub()">
+                                <i class="bi bi-github me-2"></i>从GitHub拉取知识库
+                            </button>
                         </div>
                         {% endif %}
                     </div>
@@ -226,10 +266,8 @@
             </div>
         </div>
     </div>
-
     <!-- Toast 通知 -->
     <div class="toast-container" id="toastContainer"></div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 显示 Toast 通知
@@ -247,22 +285,50 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-
+        
+        // 从GitHub拉取知识库
+        async function pullFromGitHub() {
+            const btn = document.getElementById('githubPullBtn');
+            const originalContent = btn.innerHTML;
+            
+            // 禁用按钮并显示加载状态
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span>正在拉取...';
+            
+            try {
+                const resp = await fetch('/admin/knowledge/pull', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    showToast(`✅ ${data.message}`);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(data.error || '拉取失败', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                }
+            } catch (e) {
+                showToast('网络错误，请重试', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        }
+        
         // 上传文件
         async function uploadFile(input) {
             const file = input.files[0];
             if (!file) return;
-
             const formData = new FormData();
             formData.append('file', file);
-
             try {
                 const resp = await fetch('/admin/knowledge/upload', {
                     method: 'POST',
                     body: formData
                 });
                 const data = await resp.json();
-
                 if (data.success) {
                     showToast(data.message);
                     setTimeout(() => location.reload(), 1000);
@@ -274,17 +340,14 @@
             }
             input.value = '';
         }
-
         // 手动添加切片
         async function addChunk() {
             const title = document.getElementById('chunkTitle').value.trim();
             const content = document.getElementById('chunkContent').value.trim();
-
             if (!title || !content) {
                 showToast('标题和内容不能为空', 'warning');
                 return;
             }
-
             try {
                 const resp = await fetch('/admin/knowledge/add', {
                     method: 'POST',
@@ -292,7 +355,6 @@
                     body: JSON.stringify({ title, content })
                 });
                 const data = await resp.json();
-
                 if (data.success) {
                     showToast(data.message);
                     document.getElementById('chunkTitle').value = '';
@@ -305,11 +367,9 @@
                 showToast('网络错误', 'error');
             }
         }
-
         // 删除切片
         async function deleteChunk(id) {
             if (!confirm('确定要删除此切片吗？')) return;
-
             try {
                 const resp = await fetch('/admin/knowledge/delete', {
                     method: 'POST',
@@ -317,7 +377,6 @@
                     body: JSON.stringify({ id })
                 });
                 const data = await resp.json();
-
                 if (data.success) {
                     showToast(data.message);
                     const row = document.getElementById('chunk-' + id);
@@ -334,7 +393,6 @@
                 showToast('网络错误', 'error');
             }
         }
-
         // 拖拽上传
         const uploadZone = document.getElementById('uploadZone');
         uploadZone.addEventListener('dragover', (e) => {
