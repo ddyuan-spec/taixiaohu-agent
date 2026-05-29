@@ -246,6 +246,30 @@ def admin_knowledge_delete():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+
+@app.route('/admin/knowledge/pull', methods=['POST'])
+def admin_knowledge_pull():
+    """从GitHub手动拉取知识库"""
+    from admin_service import _force_load_from_github
+    try:
+        chunks = _force_load_from_github()
+        if chunks and len(chunks) > 0:
+            return jsonify({
+                'success': True,
+                'message': f'成功从GitHub加载 {len(chunks)} 个知识切片',
+                'count': len(chunks)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '从GitHub加载失败，请检查网络连接或GitHub仓库状态'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'拉取失败: {str(e)}'
+        }), 500
+
 @app.route('/admin/profiles')
 def admin_profiles():
     """用户画像管理页面"""
