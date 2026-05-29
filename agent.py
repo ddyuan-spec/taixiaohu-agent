@@ -432,9 +432,6 @@ PRODUCT_DATABASE = [
         ]
     }
 ],
-        "contraindications": ["华法林", "抗凝药"]
-    },
-    {
         "name": "钙片+维生素D3",
         "category": "骨骼健康",
         "efficacy": "补充钙质和维生素D，帮助骨骼强健",
