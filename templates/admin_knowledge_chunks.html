@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识切片 - 泰小虎后台管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; }
+        .stat-card .stat-label { color: #6c757d; font-size: 0.85rem; }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .chunk-row {
+            padding: 14px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+        .chunk-row:hover { background: #fafbfc; }
+        .chunk-row:last-child { border-bottom: none; }
+        .chunk-preview {
+            color: #555;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            max-height: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chunk-full-content {
+            display: none;
+            padding: 12px 16px;
+            margin-top: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: #333;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            border-left: 3px solid #43e97b;
+        }
+        .chunk-full-content.show { display: block; }
+        .badge-count {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+        }
+        .btn-primary-custom {
+            background-color: #43e97b;
+            border-color: #43e97b;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .btn-primary-custom:hover {
+            background-color: #38d06e;
+            border-color: #38d06e;
+            color: #1a1a2e;
+        }
+        .btn-danger-custom {
+            background-color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+        .btn-danger-custom:hover {
+            background-color: #e64446;
+            border-color: #e64446;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .call-record-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .call-record-item:hover { background: #fafbfc; }
+        .call-record-item:last-child { border-bottom: none; }
+        .filter-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .filter-group .form-control,
+        .filter-group .form-select {
+            font-size: 0.85rem;
+        }
+        .session-link {
+            color: #0d6efd;
+            text-decoration: none;
+            font-size: 0.78rem;
+        }
+        .session-link:hover {
+            text-decoration: underline;
+        }
+        .expand-icon {
+            transition: transform 0.2s;
+            font-size: 0.85rem;
+            color: #999;
+        }
+        .expand-icon.rotated {
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/knowledge/chunks' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4><i class="bi bi-database me-2"></i>知识切片</h4>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="loadChunks()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                    </button>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="statTotal">-</div>
+                                        <div class="stat-label">切片总数</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                                        <i class="bi bi-lightning-charge"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="statTotalCalls">-</div>
+                                        <div class="stat-label">总调用次数</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                                        <i class="bi bi-lightning"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="statTodayCalls">-</div>
+                                        <div class="stat-label">今日调用</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                                        <i class="bi bi-clock-history"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="statLastCall" style="font-size:1rem;">-</div>
+                                        <div class="stat-label">最近调用时间</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 筛选条件 -->
+                <div class="card content-card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4 filter-group">
+                                <label><i class="bi bi-search me-1"></i>关键词搜索</label>
+                                <input type="text" class="form-control" id="searchKeyword" placeholder="搜索标题或内容..." onkeyup="debounceFilter()">
+                            </div>
+                            <div class="col-md-2 filter-group">
+                                <label><i class="bi bi-file-earmark me-1"></i>来源文件</label>
+                                <select class="form-select" id="filterSource" onchange="filterChunks()">
+                                    <option value="">全部文件</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 filter-group">
+                                <label><i class="bi bi-sort-numeric-down me-1"></i>调用次数排序</label>
+                                <select class="form-select" id="sortCalls" onchange="filterChunks()">
+                                    <option value="default">默认排序</option>
+                                    <option value="desc">从高到低</option>
+                                    <option value="asc">从低到高</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 filter-group">
+                                <label><i class="bi bi-funnel me-1"></i>调用状态</label>
+                                <select class="form-select" id="filterCalled" onchange="filterChunks()">
+                                    <option value="all">全部</option>
+                                    <option value="called">已调用</option>
+                                    <option value="uncalled">未调用</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                                    <i class="bi bi-x-circle me-1"></i>重置筛选
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 切片列表 -->
+                <div class="card content-card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-ul me-2"></i>切片列表 <span class="badge bg-secondary ms-2" id="filteredCount">0</span></span>
+                    </div>
+                    <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                        <!-- 表头 -->
+                        <div class="row mb-2" style="font-size:0.8rem; color:#888; font-weight:600; border-bottom: 2px solid #eee; padding-bottom: 8px;">
+                            <div class="col-md-1">ID</div>
+                            <div class="col-md-2">标题</div>
+                            <div class="col-md-2">来源文件</div>
+                            <div class="col-md-3">内容预览</div>
+                            <div class="col-md-1 text-center">调用次数</div>
+                            <div class="col-md-1 text-center">最近调用</div>
+                            <div class="col-md-2 text-center">操作</div>
+                        </div>
+                        <div id="chunkList">
+                            <div class="text-center py-5" id="emptyChunks">
+                                <i class="bi bi-inbox" style="font-size:3rem; color:#ccc;"></i>
+                                <p class="text-muted mt-3">加载中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近调用记录 -->
+                <div class="card content-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-lightning-charge me-2"></i>最近调用记录</span>
+                        <span class="badge bg-info" id="callRecordCount">0</span>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        <div id="callRecordList">
+                            <div class="text-center py-4" id="emptyCallRecords">
+                                <i class="bi bi-hourglass" style="font-size:2rem; color:#ccc;"></i>
+                                <p class="text-muted mt-2">暂无调用记录</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 切片详情弹窗 -->
+    <div class="modal fade" id="chunkDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 12px; border: none;">
+                <div class="modal-header" style="border-bottom: 1px solid #eee;">
+                    <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>切片详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="chunkDetailBody">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allChunks = [];
+        let callRecords = [];
+        let debounceTimer = null;
+
+        // 显示 Toast 通知
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-warning';
+            toast.className = `toast show ${bgClass} text-white`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `<div class="toast-body">${message}</div>`;
+            toast.style.minWidth = '280px';
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 格式化时间
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            try {
+                const date = new Date(isoString);
+                const pad = n => String(n).padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            } catch (e) {
+                return isoString;
+            }
+        }
+
+        // 防抖搜索
+        function debounceFilter() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => filterChunks(), 300);
+        }
+
+        // 加载切片数据
+        async function loadChunks() {
+            try {
+                const resp = await fetch('/api/v2/kb/chunks?limit=500');
+                const data = await resp.json();
+
+                if (data.success && data.chunks) {
+                    allChunks = data.chunks;
+                    updateStats();
+                    populateSourceFilter();
+                    filterChunks();
+                } else {
+                    document.getElementById('emptyChunks').innerHTML = `
+                        <i class="bi bi-inbox" style="font-size:3rem; color:#ccc;"></i>
+                        <p class="text-muted mt-3">暂无知识切片数据</p>
+                    `;
+                }
+            } catch (e) {
+                console.error('加载切片失败:', e);
+                document.getElementById('emptyChunks').innerHTML = `
+                    <i class="bi bi-exclamation-triangle" style="font-size:3rem; color:#ff4d4f;"></i>
+                    <p class="text-danger mt-3">加载失败，请检查网络连接</p>
+                `;
+            }
+
+            // 加载调用记录
+            loadCallRecords();
+        }
+
+        // 加载最近调用记录
+        async function loadCallRecords() {
+            try {
+                const resp = await fetch('/api/v2/kb/call-records?limit=20');
+                const data = await resp.json();
+
+                if (data.success && data.records) {
+                    callRecords = data.records;
+                    renderCallRecords();
+                }
+            } catch (e) {
+                console.error('加载调用记录失败:', e);
+            }
+        }
+
+        // 更新统计卡片
+        function updateStats() {
+            const total = allChunks.length;
+            const totalCalls = allChunks.reduce((sum, c) => sum + (c.call_count || 0), 0);
+
+            // 今日调用
+            const today = new Date().toISOString().slice(0, 10);
+            const todayCalls = allChunks.filter(c => {
+                if (!c.last_called) return false;
+                return c.last_called.slice(0, 10) === today;
+            }).reduce((sum, c) => sum + (c.call_count || 0), 0);
+
+            // 最近调用时间
+            const calledChunks = allChunks.filter(c => c.last_called).sort((a, b) => b.last_called.localeCompare(a.last_called));
+            const lastCall = calledChunks.length > 0 ? formatTime(calledChunks[0].last_called) : '-';
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statTotalCalls').textContent = totalCalls;
+            document.getElementById('statTodayCalls').textContent = todayCalls;
+            document.getElementById('statLastCall').textContent = lastCall;
+        }
+
+        // 填充来源文件下拉
+        function populateSourceFilter() {
+            const sources = [...new Set(allChunks.map(c => c.source_file).filter(Boolean))].sort();
+            const select = document.getElementById('filterSource');
+            select.innerHTML = '<option value="">全部文件</option>';
+            sources.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                select.appendChild(opt);
+            });
+        }
+
+        // 筛选切片
+        function filterChunks() {
+            const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
+            const source = document.getElementById('filterSource').value;
+            const sortCalls = document.getElementById('sortCalls').value;
+            const filterCalled = document.getElementById('filterCalled').value;
+
+            let filtered = allChunks.filter(chunk => {
+                // 关键词搜索（标题和内容）
+                if (keyword) {
+                    const title = (chunk.title || '').toLowerCase();
+                    const content = (chunk.content || '').toLowerCase();
+                    if (!title.includes(keyword) && !content.includes(keyword)) return false;
+                }
+                // 来源文件筛选
+                if (source && chunk.source_file !== source) return false;
+                // 调用状态筛选
+                if (filterCalled === 'called' && (!chunk.call_count || chunk.call_count === 0)) return false;
+                if (filterCalled === 'uncalled' && chunk.call_count && chunk.call_count > 0) return false;
+                return true;
+            });
+
+            // 调用次数排序
+            if (sortCalls === 'desc') {
+                filtered.sort((a, b) => (b.call_count || 0) - (a.call_count || 0));
+            } else if (sortCalls === 'asc') {
+                filtered.sort((a, b) => (a.call_count || 0) - (b.call_count || 0));
+            }
+
+            renderChunks(filtered);
+        }
+
+        // 渲染切片列表
+        function renderChunks(chunks) {
+            const container = document.getElementById('chunkList');
+            document.getElementById('filteredCount').textContent = chunks.length;
+
+            if (chunks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-search" style="font-size:3rem; color:#ccc;"></i>
+                        <p class="text-muted mt-3">没有找到匹配的切片</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = chunks.map(chunk => {
+                const contentPreview = (chunk.content || '').substring(0, 100);
+                const hasMore = (chunk.content || '').length > 100;
+                const title = chunk.title || '无标题';
+                const callCount = chunk.call_count || 0;
+                const lastCalled = formatTime(chunk.last_called);
+
+                return `
+                    <div class="row chunk-row align-items-center" id="chunk-${chunk.id}" onclick="toggleExpand('${chunk.id}')">
+                        <div class="col-md-1">
+                            <code style="font-size:0.8rem;">${chunk.id}</code>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-chevron-right expand-icon me-1" id="icon-${chunk.id}"></i>
+                                <span class="text-truncate d-inline-block" style="max-width:90%; font-size:0.85rem;" title="${escapeHtml(title)}">
+                                    ${escapeHtml(title)}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <span class="text-truncate d-inline-block" style="max-width:100%; font-size:0.8rem; color:#888;" title="${escapeHtml(chunk.source_file || '')}">
+                                ${escapeHtml(chunk.source_file || '-')}
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="chunk-preview" title="${escapeHtml(chunk.content || '')}">${escapeHtml(contentPreview)}${hasMore ? '...' : ''}</div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <span class="badge ${callCount > 0 ? 'bg-primary' : 'bg-secondary'} badge-count">${callCount}</span>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <small class="text-muted" style="font-size:0.75rem;">${lastCalled}</small>
+                        </div>
+                        <div class="col-md-2 text-center" onclick="event.stopPropagation()">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showChunkDetail('${chunk.id}')" title="查看详情">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteChunk('${chunk.id}')" title="删除">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chunk-full-content" id="expand-${chunk.id}">${escapeHtml(chunk.content || '')}</div>
+                `;
+            }).join('');
+        }
+
+        // 展开/收起切片内容
+        function toggleExpand(id) {
+            const content = document.getElementById('expand-' + id);
+            const icon = document.getElementById('icon-' + id);
+            if (content) {
+                content.classList.toggle('show');
+                if (icon) icon.classList.toggle('rotated');
+            }
+        }
+
+        // 查看切片详情（弹窗）
+        function showChunkDetail(id) {
+            const chunk = allChunks.find(c => String(c.id) === String(id));
+            if (!chunk) return;
+
+            const body = document.getElementById('chunkDetailBody');
+            body.innerHTML = `
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size:0.85rem;">ID:</span>
+                    <code class="ms-2">${chunk.id}</code>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size:0.85rem;">标题:</span>
+                    <span class="fw-semibold ms-2">${escapeHtml(chunk.title || '无标题')}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size:0.85rem;">来源文件:</span>
+                    <span class="ms-2" style="font-size:0.9rem;">${escapeHtml(chunk.source_file || '-')}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size:0.85rem;">调用次数:</span>
+                    <span class="badge bg-primary ms-2">${chunk.call_count || 0}</span>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size:0.85rem;">最近调用:</span>
+                    <span class="ms-2" style="font-size:0.9rem;">${formatTime(chunk.last_called)}</span>
+                </div>
+                <hr>
+                <div>
+                    <span class="text-muted" style="font-size:0.85rem; font-weight:600;">完整内容:</span>
+                    <div style="margin-top:10px; padding:16px; background:#f8f9fa; border-radius:8px; font-size:0.9rem; line-height:1.8; white-space:pre-wrap; word-break:break-word; max-height:400px; overflow-y:auto; border-left:3px solid #43e97b;">
+                        ${escapeHtml(chunk.content || '')}
+                    </div>
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('chunkDetailModal')).show();
+        }
+
+        // 删除切片
+        async function deleteChunk(id) {
+            if (!confirm('确定要删除此切片吗？此操作不可恢复。')) return;
+
+            try {
+                const resp = await fetch('/admin/knowledge/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showToast('切片已删除');
+                    const row = document.getElementById('chunk-' + id);
+                    if (row) {
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(20px)';
+                        row.style.transition = 'all 0.3s';
+                        setTimeout(() => {
+                            row.remove();
+                            // 从数据中移除
+                            allChunks = allChunks.filter(c => String(c.id) !== String(id));
+                            updateStats();
+                            populateSourceFilter();
+                            document.getElementById('filteredCount').textContent =
+                                parseInt(document.getElementById('filteredCount').textContent) - 1;
+                        }, 300);
+                    }
+                } else {
+                    showToast(data.error || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('网络错误', 'error');
+            }
+        }
+
+        // 渲染调用记录
+        function renderCallRecords() {
+            const container = document.getElementById('callRecordList');
+            document.getElementById('callRecordCount').textContent = callRecords.length;
+
+            if (callRecords.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4" id="emptyCallRecords">
+                        <i class="bi bi-hourglass" style="font-size:2rem; color:#ccc;"></i>
+                        <p class="text-muted mt-2">暂无调用记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = callRecords.map(record => {
+                const sessionId = record.session_id || '';
+                const sessionLink = sessionId
+                    ? `<a href="/admin/conversations?session_id=${encodeURIComponent(sessionId)}" class="session-link ms-2" title="查看对话详情">
+                        <i class="bi bi-box-arrow-up-right"></i>${sessionId.length > 12 ? sessionId.substring(0, 12) + '...' : sessionId}
+                       </a>`
+                    : '<span class="text-muted" style="font-size:0.78rem;">-</span>';
+
+                return `
+                    <div class="call-record-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="d-flex align-items-center mb-1">
+                                    <code style="font-size:0.8rem; color:#0d6efd;">#${escapeHtml(String(record.chunk_id || record.id || ''))}</code>
+                                    <span class="fw-semibold ms-2" style="font-size:0.9rem;">${escapeHtml(record.chunk_title || '未知切片')}</span>
+                                </div>
+                                <div style="font-size:0.8rem; color:#888;">
+                                    <i class="bi bi-clock me-1"></i>${formatTime(record.called_at || record.created_at)}
+                                    <span class="ms-3"><i class="bi bi-link-45deg me-1"></i>Session: ${sessionLink}</span>
+                                </div>
+                            </div>
+                            ${record.query ? `<small class="text-muted" style="font-size:0.78rem; max-width:200px;" title="${escapeHtml(record.query)}"><i class="bi bi-search me-1"></i>${escapeHtml(record.query.substring(0, 30))}${record.query.length > 30 ? '...' : ''}</small>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('filterSource').value = '';
+            document.getElementById('sortCalls').value = 'default';
+            document.getElementById('filterCalled').value = 'all';
+            filterChunks();
+        }
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChunks();
+        });
+    </script>
+</body>
+</html>

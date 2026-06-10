@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - Badcase管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; }
+        .stat-card .stat-label { color: #6c757d; font-size: 0.85rem; }
+        .badcase-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .badcase-item:hover { background: #f6ffed; }
+        .badcase-item:last-child { border-bottom: none; }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-processing { background: #dbeafe; color: #1e40af; }
+        .status-resolved { background: #d1fae5; color: #065f46; }
+        .status-ignored { background: #f3f4f6; color: #6b7280; }
+        .category-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .empty-state { text-align: center; padding: 60px; color: #999; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 15px; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/badcases' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0"><i class="bi bi-bug me-2"></i>Badcase管理</h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" onclick="refreshData()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="showCreateModal()">
+                            <i class="bi bi-plus-lg me-1"></i>新建Badcase
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-danger bg-opacity-10 text-danger me-3">
+                                        <i class="bi bi-bug"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="totalBadcases">0</div>
+                                        <div class="stat-label">Badcase总数</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                                        <i class="bi bi-hourglass-split"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="pendingCount">0</div>
+                                        <div class="stat-label">待处理</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="processingCount">0</div>
+                                        <div class="stat-label">处理中</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="resolvedCount">0</div>
+                                        <div class="stat-label">已修复</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 筛选栏 -->
+                <div class="card content-card mb-3">
+                    <div class="card-body py-3">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="filterStatus" onchange="filterBadcases()">
+                                    <option value="all">全部状态</option>
+                                    <option value="pending">待处理</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="resolved">已修复</option>
+                                    <option value="ignored">已忽略</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="filterCategory" onchange="filterBadcases()">
+                                    <option value="all">全部分类</option>
+                                    <option value="intent_error">意图识别错误</option>
+                                    <option value="reply_inappropriate">回复内容不当</option>
+                                    <option value="recommend_error">产品推荐错误</option>
+                                    <option value="kb_failure">知识库检索失败</option>
+                                    <option value="profile_issue">画像收集问题</option>
+                                    <option value="safety">安全红线突破</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control form-control-sm" id="searchInput"
+                                       placeholder="搜索会话ID或描述..." onkeyup="filterBadcases()">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-success btn-sm w-100" onclick="loadBadcases()">
+                                    <i class="bi bi-search me-1"></i>查询
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Badcase列表 -->
+                <div class="card content-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-check me-2"></i>Badcase列表</span>
+                        <small class="text-muted" id="badcaseCount">共 0 条</small>
+                    </div>
+                    <div id="badcaseList">
+                        <div class="empty-state">
+                            <div class="empty-state-icon"><i class="bi bi-bug" style="font-size:48px;color:#ccc;"></i></div>
+                            <p>暂无Badcase记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑Modal -->
+    <div class="modal fade" id="badcaseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle"><i class="bi bi-bug me-2"></i>新建Badcase</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="badcaseForm">
+                        <input type="hidden" id="badcaseId">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">关联会话ID</label>
+                                <input type="text" class="form-control" id="sessionId" placeholder="例如: web_xxx">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">问题分类 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category" required>
+                                    <option value="">请选择</option>
+                                    <option value="intent_error">意图识别错误</option>
+                                    <option value="reply_inappropriate">回复内容不当</option>
+                                    <option value="recommend_error">产品推荐错误</option>
+                                    <option value="kb_failure">知识库检索失败</option>
+                                    <option value="profile_issue">画像收集问题</option>
+                                    <option value="safety">安全红线突破</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">关联模块</label>
+                                <select class="form-select" id="relatedModule">
+                                    <option value="">请选择</option>
+                                    <option value="intent_router">意图识别</option>
+                                    <option value="kb_retriever">知识库检索</option>
+                                    <option value="product_recommender">产品推荐</option>
+                                    <option value="dialogue_manager">对话管理</option>
+                                    <option value="profile_collector">画像收集</option>
+                                    <option value="llm_service">LLM服务</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">状态</label>
+                                <select class="form-select" id="status">
+                                    <option value="pending">待处理</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="resolved">已修复</option>
+                                    <option value="ignored">已忽略</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">问题描述 <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="description" rows="3" placeholder="描述具体问题..." required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">期望回复</label>
+                                <textarea class="form-control" id="expectedResponse" rows="2" placeholder="描述期望的正确回复..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">修复备注</label>
+                                <textarea class="form-control" id="resolutionNote" rows="2" placeholder="处理/修复说明..."></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveBadcase()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allBadcases = [];
+        let modalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            modalInstance = new bootstrap.Modal(document.getElementById('badcaseModal'));
+            loadBadcases();
+        });
+
+        async function loadBadcases() {
+            try {
+                const resp = await fetch('/api/admin/badcases');
+                const data = await resp.json();
+                if (data.success) {
+                    allBadcases = data.badcases || [];
+                    filterBadcases();
+                    updateStats(allBadcases);
+                }
+            } catch (e) {
+                console.error('加载Badcase失败:', e);
+                showToast('加载失败', 'error');
+            }
+        }
+
+        function updateStats(badcases) {
+            document.getElementById('totalBadcases').textContent = badcases.length;
+            document.getElementById('pendingCount').textContent = badcases.filter(b => b.status === 'pending').length;
+            document.getElementById('processingCount').textContent = badcases.filter(b => b.status === 'processing').length;
+            document.getElementById('resolvedCount').textContent = badcases.filter(b => b.status === 'resolved').length;
+        }
+
+        function filterBadcases() {
+            const status = document.getElementById('filterStatus').value;
+            const category = document.getElementById('filterCategory').value;
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = allBadcases.filter(b => {
+                if (status !== 'all' && b.status !== status) return false;
+                if (category !== 'all' && b.category !== category) return false;
+                if (keyword && !((b.session_id || '').toLowerCase().includes(keyword) ||
+                    (b.description || '').toLowerCase().includes(keyword))) return false;
+                return true;
+            });
+            renderBadcases(filtered);
+        }
+
+        function renderBadcases(badcases) {
+            const container = document.getElementById('badcaseList');
+            document.getElementById('badcaseCount').textContent = `共 ${badcases.length} 条`;
+
+            if (badcases.length === 0) {
+                container.innerHTML = `<div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-bug" style="font-size:48px;color:#ccc;"></i></div>
+                    <p>暂无Badcase记录</p>
+                </div>`;
+                return;
+            }
+
+            const categoryMap = {
+                'intent_error': '意图识别错误',
+                'reply_inappropriate': '回复内容不当',
+                'recommend_error': '产品推荐错误',
+                'kb_failure': '知识库检索失败',
+                'profile_issue': '画像收集问题',
+                'safety': '安全红线突破',
+                'other': '其他'
+            };
+            const statusMap = {
+                'pending': { text: '待处理', class: 'status-pending' },
+                'processing': { text: '处理中', class: 'status-processing' },
+                'resolved': { text: '已修复', class: 'status-resolved' },
+                'ignored': { text: '已忽略', class: 'status-ignored' }
+            };
+
+            container.innerHTML = badcases.map(b => {
+                const st = statusMap[b.status] || statusMap['pending'];
+                return `
+                <div class="badcase-item" onclick="editBadcase('${b.badcase_id}')">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="badge bg-light text-dark me-2">${b.badcase_id}</span>
+                            <span class="category-badge bg-secondary bg-opacity-10 text-secondary">${categoryMap[b.category] || b.category}</span>
+                        </div>
+                        <span class="status-badge ${st.class}">${st.text}</span>
+                    </div>
+                    <div class="mb-1" style="font-size:0.9rem;color:#333;">${escapeHtml(b.description)}</div>
+                    <div class="d-flex gap-3 align-items-center" style="font-size:0.8rem;color:#888;">
+                        <span><i class="bi bi-chat-square me-1"></i>${b.session_id || '-'}</span>
+                        <span><i class="bi bi-box me-1"></i>${b.related_module || '-'}</span>
+                        <span><i class="bi bi-clock me-1"></i>${formatTime(b.created_at)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function showCreateModal() {
+            document.getElementById('badcaseForm').reset();
+            document.getElementById('badcaseId').value = '';
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-bug me-2"></i>新建Badcase';
+            modalInstance.show();
+        }
+
+        function editBadcase(id) {
+            const bc = allBadcases.find(b => b.badcase_id === id);
+            if (!bc) return;
+            document.getElementById('badcaseId').value = bc.badcase_id;
+            document.getElementById('sessionId').value = bc.session_id || '';
+            document.getElementById('category').value = bc.category || '';
+            document.getElementById('relatedModule').value = bc.related_module || '';
+            document.getElementById('status').value = bc.status || 'pending';
+            document.getElementById('description').value = bc.description || '';
+            document.getElementById('expectedResponse').value = bc.expected_response || '';
+            document.getElementById('resolutionNote').value = bc.resolution_note || '';
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>编辑Badcase';
+            modalInstance.show();
+        }
+
+        async function saveBadcase() {
+            const id = document.getElementById('badcaseId').value;
+            const payload = {
+                session_id: document.getElementById('sessionId').value,
+                category: document.getElementById('category').value,
+                related_module: document.getElementById('relatedModule').value,
+                status: document.getElementById('status').value,
+                description: document.getElementById('description').value,
+                expected_response: document.getElementById('expectedResponse').value,
+                resolution_note: document.getElementById('resolutionNote').value
+            };
+
+            if (!payload.category || !payload.description) {
+                showToast('请填写必填项', 'error');
+                return;
+            }
+
+            try {
+                const url = id ? `/api/admin/badcases/${id}` : '/api/admin/badcases';
+                const method = id ? 'PUT' : 'POST';
+                const resp = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showToast(id ? '更新成功' : '创建成功');
+                    modalInstance.hide();
+                    loadBadcases();
+                } else {
+                    showToast(data.message || '操作失败', 'error');
+                }
+            } catch (e) {
+                showToast('请求失败', 'error');
+            }
+        }
+
+        function refreshData() {
+            loadBadcases();
+            showToast('数据已刷新');
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '-';
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+            } catch(e) { return iso; }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showToast(msg, type='success') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast show ${type==='success'?'bg-success':'bg-danger'} text-white`;
+            t.innerHTML = `<div class="toast-body">${msg}</div>`;
+            t.style.minWidth = '200px';
+            c.appendChild(t);
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+        }
+    </script>
+</body>
+</html>

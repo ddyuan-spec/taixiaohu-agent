@@ -1,0 +1,82 @@
+<div class="col-md-2 p-0 sidebar">
+    <div class="brand">
+        <i class="bi bi-shield-check"></i> 泰小虎后台管理
+    </div>
+    <nav class="nav flex-column">
+        <a href="/admin" class="nav-link {% if active_page == '/admin' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> 仪表盘
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-folder"></i> 知识库管理
+        </div>
+        <a href="/admin/knowledge/upload" class="nav-link {% if active_page == '/admin/knowledge/upload' %}active{% endif %}">
+            <i class="bi bi-cloud-upload"></i> 知识上传
+        </a>
+        <a href="/admin/knowledge/chunks" class="nav-link {% if active_page == '/admin/knowledge/chunks' %}active{% endif %}">
+            <i class="bi bi-database"></i> 知识切片
+        </a>
+        <a href="/admin/knowledge/call-records" class="nav-link {% if active_page == '/admin/knowledge/call-records' %}active{% endif %}">
+            <i class="bi bi-clock-history"></i> 调用记录
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-chat-dots"></i> 对话管理
+        </div>
+        <a href="/admin/conversations" class="nav-link {% if active_page == '/admin/conversations' %}active{% endif %}">
+            <i class="bi bi-chat-square-text"></i> 对话记录
+        </a>
+        <a href="/admin/badcases" class="nav-link {% if active_page == '/admin/badcases' %}active{% endif %}">
+            <i class="bi bi-bug"></i> Badcase管理
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-people"></i> 用户管理
+        </div>
+        <a href="/admin/profiles" class="nav-link {% if active_page == '/admin/profiles' %}active{% endif %}">
+            <i class="bi bi-person-vcard"></i> 用户画像
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-cpu"></i> 系统监控
+        </div>
+        <a href="/admin/model-calls" class="nav-link {% if active_page == '/admin/model-calls' %}active{% endif %}">
+            <i class="bi bi-graph-up"></i> 模型调用记录
+        </a>
+        <a href="/admin/traces" class="nav-link {% if active_page == '/admin/traces' %}active{% endif %}">
+            <i class="bi bi-diagram-3"></i> 调用链路追踪
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-coin"></i> 积分运营
+        </div>
+        <a href="/admin/points" class="nav-link {% if active_page == '/admin/points' %}active{% endif %}">
+            <i class="bi bi-wallet2"></i> 积分管理
+        </a>
+        <a href="/admin/points/config" class="nav-link {% if active_page == '/admin/points/config' %}active{% endif %}">
+            <i class="bi bi-sliders"></i> 积分配置
+        </a>
+        <a href="/admin/shop" class="nav-link {% if active_page == '/admin/shop' %}active{% endif %}">
+            <i class="bi bi-shop"></i> 积分商城
+        </a>
+
+        <div class="nav-link disabled text-white-50 mt-2" style="font-size:0.7rem; padding: 8px 20px;">
+            <i class="bi bi-gear"></i> 系统配置
+        </div>
+        <a href="/admin/llm" class="nav-link {% if active_page == '/admin/llm' %}active{% endif %}">
+            <i class="bi bi-cpu"></i> 模型配置
+        </a>
+        <a href="/admin/prompt" class="nav-link {% if active_page == '/admin/prompt' %}active{% endif %}">
+            <i class="bi bi-chat-left-text"></i> 提示词配置
+        </a>
+        <a href="/admin/data-export" class="nav-link {% if active_page == '/admin/data-export' %}active{% endif %}">
+            <i class="bi bi-download"></i> 数据导出
+        </a>
+
+        <div class="mt-3 pt-3 border-top border-secondary">
+            <a href="/" class="nav-link">
+                <i class="bi bi-box-arrow-left"></i> 返回前台
+            </a>
+        </div>
+    </nav>
+</div>

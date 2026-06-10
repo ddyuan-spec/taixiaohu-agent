@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识上传 - 泰小虎后台管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #43e97b;
+            background: #f0faf4;
+        }
+        .upload-zone .upload-icon {
+            font-size: 3rem;
+            color: #43e97b;
+            margin-bottom: 12px;
+        }
+        .btn-primary-custom {
+            background-color: #43e97b;
+            border-color: #43e97b;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .btn-primary-custom:hover {
+            background-color: #38d06e;
+            border-color: #38d06e;
+            color: #1a1a2e;
+        }
+        .btn-danger-custom {
+            background-color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+        .btn-danger-custom:hover {
+            background-color: #e64446;
+            border-color: #e64446;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .record-item {
+            padding: 14px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .record-item:hover { background: #fafbfc; }
+        .record-item:last-child { border-bottom: none; }
+        .record-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .record-status.success { background: #e8f5e9; color: #2e7d32; }
+        .record-status.failed { background: #ffebee; color: #c62828; }
+        .record-content-preview {
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            max-height: 48px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/knowledge/upload' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <h4 class="mb-4">
+                    <i class="bi bi-cloud-upload me-2"></i>知识上传
+                </h4>
+
+                <!-- 上传区域 + 手动添加 -->
+                <div class="row g-3 mb-4">
+                    <!-- 文件上传 -->
+                    <div class="col-md-7">
+                        <div class="card content-card">
+                            <div class="card-header">
+                                <i class="bi bi-file-earmark-arrow-up me-2"></i>文件上传
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                                    <i class="bi bi-cloud-arrow-up upload-icon d-block"></i>
+                                    <p class="mb-1 fw-semibold">点击或拖拽文件到此处上传</p>
+                                    <small class="text-muted">支持 .txt, .md, .csv, .json 格式，文件将自动切片入库</small>
+                                </div>
+                                <input type="file" id="fileInput" accept=".txt,.md,.csv,.json" style="display:none" onchange="uploadFile(this)">
+                                <!-- 上传进度 -->
+                                <div id="uploadProgress" class="mt-3" style="display:none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                                        <span class="text-muted" style="font-size:0.85rem;" id="uploadStatusText">正在上传并处理文件...</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 手动添加切片 -->
+                    <div class="col-md-5">
+                        <div class="card content-card">
+                            <div class="card-header">
+                                <i class="bi bi-pencil-square me-2"></i>手动添加切片
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size:0.85rem; font-weight:600;">标题</label>
+                                    <input type="text" class="form-control" id="chunkTitle" placeholder="输入切片标题">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size:0.85rem; font-weight:600;">内容</label>
+                                    <textarea class="form-control" id="chunkContent" rows="5" placeholder="输入切片内容"></textarea>
+                                </div>
+                                <button class="btn btn-primary-custom w-100" onclick="addChunk()">
+                                    <i class="bi bi-plus-lg me-1"></i>添加切片
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GitHub 同步 -->
+                <div class="card content-card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-github me-2"></i>GitHub 知识库同步
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size: 0.9rem;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            从 GitHub 仓库拉取预置知识库数据（产品信息、FAQ、科普资料等），将自动合并到现有知识库中。
+                        </p>
+                        <button class="btn btn-primary-custom" onclick="pullFromGitHub()">
+                            <i class="bi bi-cloud-download me-2"></i>从 GitHub 拉取知识库
+                        </button>
+                        <span id="pullStatus" class="ms-3" style="font-size: 0.9rem;"></span>
+                    </div>
+                </div>
+
+                <!-- 本次添加记录 -->
+                <div class="card content-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-journal-check me-2"></i>本次添加记录</span>
+                        <span class="badge bg-secondary" id="recordCount">0 条</span>
+                    </div>
+                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                        <div id="recordList">
+                            <div class="text-center py-5" id="emptyRecords">
+                                <i class="bi bi-inbox" style="font-size:3rem; color:#ccc;"></i>
+                                <p class="text-muted mt-3">暂无添加记录，请上传文件或手动添加切片</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 本次会话添加记录（累积，不清空）
+        let sessionRecords = [];
+
+        // 显示 Toast 通知
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-warning';
+            toast.className = `toast show ${bgClass} text-white`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `<div class="toast-body">${message}</div>`;
+            toast.style.minWidth = '280px';
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 更新记录计数
+        function updateRecordCount() {
+            document.getElementById('recordCount').textContent = sessionRecords.length + ' 条';
+        }
+
+        // 渲染单条记录到列表顶部
+        function renderRecord(record) {
+            const emptyEl = document.getElementById('emptyRecords');
+            if (emptyEl) emptyEl.remove();
+
+            const listEl = document.getElementById('recordList');
+            const item = document.createElement('div');
+            item.className = 'record-item';
+            item.style.animation = 'fadeIn 0.3s ease-in';
+
+            const statusClass = record.success ? 'success' : 'failed';
+            const statusText = record.success ? '成功' : '失败';
+            const contentPreview = record.content.length > 100 ? record.content.substring(0, 100) + '...' : record.content;
+
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="fw-semibold" style="font-size:0.9rem;">${escapeHtml(record.title)}</span>
+                        <span class="record-status ${statusClass} ms-2">${statusText}</span>
+                    </div>
+                    <small class="text-muted" style="font-size:0.75rem; white-space:nowrap;">${record.time}</small>
+                </div>
+                <div class="record-content-preview">${escapeHtml(contentPreview)}</div>
+                ${!record.success && record.error ? `<small class="text-danger" style="font-size:0.8rem;">错误: ${escapeHtml(record.error)}</small>` : ''}
+            `;
+
+            // 插入到列表最前面
+            listEl.insertBefore(item, listEl.firstChild);
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 获取当前时间字符串
+        function getNow() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        }
+
+        // 上传文件
+        async function uploadFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const progressEl = document.getElementById('uploadProgress');
+            progressEl.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const resp = await fetch('/admin/knowledge/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showToast(`文件上传成功: ${data.message || '已入库'}`);
+                    sessionRecords.unshift({
+                        title: file.name,
+                        content: `文件上传成功，共处理 ${data.chunk_count || '若干'} 个切片`,
+                        success: true,
+                        time: getNow()
+                    });
+                    renderRecord(sessionRecords[0]);
+                    updateRecordCount();
+                } else {
+                    showToast(data.error || '上传失败', 'error');
+                    sessionRecords.unshift({
+                        title: file.name,
+                        content: '文件上传失败',
+                        success: false,
+                        error: data.error || '未知错误',
+                        time: getNow()
+                    });
+                    renderRecord(sessionRecords[0]);
+                    updateRecordCount();
+                }
+            } catch (e) {
+                showToast('网络错误，请检查连接', 'error');
+                sessionRecords.unshift({
+                    title: file.name,
+                    content: '网络错误',
+                    success: false,
+                    error: e.message,
+                    time: getNow()
+                });
+                renderRecord(sessionRecords[0]);
+                updateRecordCount();
+            } finally {
+                progressEl.style.display = 'none';
+                input.value = '';
+            }
+        }
+
+        // 手动添加切片
+        async function addChunk() {
+            const title = document.getElementById('chunkTitle').value.trim();
+            const content = document.getElementById('chunkContent').value.trim();
+
+            if (!title || !content) {
+                showToast('标题和内容不能为空', 'warning');
+                return;
+            }
+
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>添加中...';
+
+            try {
+                const resp = await fetch('/admin/knowledge/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showToast('切片添加成功');
+                    sessionRecords.unshift({
+                        title: title,
+                        content: content,
+                        success: true,
+                        time: getNow()
+                    });
+                    document.getElementById('chunkTitle').value = '';
+                    document.getElementById('chunkContent').value = '';
+                } else {
+                    showToast(data.error || '添加失败', 'error');
+                    sessionRecords.unshift({
+                        title: title,
+                        content: content,
+                        success: false,
+                        error: data.error || '未知错误',
+                        time: getNow()
+                    });
+                }
+                renderRecord(sessionRecords[0]);
+                updateRecordCount();
+            } catch (e) {
+                showToast('网络错误，请检查连接', 'error');
+                sessionRecords.unshift({
+                    title: title,
+                    content: content,
+                    success: false,
+                    error: e.message,
+                    time: getNow()
+                });
+                renderRecord(sessionRecords[0]);
+                updateRecordCount();
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // 从 GitHub 拉取知识库
+        async function pullFromGitHub() {
+            const statusEl = document.getElementById('pullStatus');
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>拉取中...';
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="text-primary">正在从 GitHub 拉取数据...</span>';
+            }
+
+            try {
+                const resp = await fetch('/admin/knowledge/pull', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showToast(`${data.message} (共 ${data.total || 0} 个切片)`);
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>${data.message}</span>`;
+                    }
+                    sessionRecords.unshift({
+                        title: 'GitHub 知识库同步',
+                        content: `同步完成，共拉取 ${data.total || 0} 个切片`,
+                        success: true,
+                        time: getNow()
+                    });
+                    renderRecord(sessionRecords[0]);
+                    updateRecordCount();
+                } else {
+                    showToast(data.message || '拉取失败', 'error');
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.message || '拉取失败'}</span>`;
+                    }
+                    sessionRecords.unshift({
+                        title: 'GitHub 知识库同步',
+                        content: '同步失败',
+                        success: false,
+                        error: data.message || '未知错误',
+                        time: getNow()
+                    });
+                    renderRecord(sessionRecords[0]);
+                    updateRecordCount();
+                }
+            } catch (e) {
+                showToast('网络错误，请检查连接', 'error');
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>网络错误</span>';
+                }
+                sessionRecords.unshift({
+                    title: 'GitHub 知识库同步',
+                    content: '网络错误',
+                    success: false,
+                    error: e.message,
+                    time: getNow()
+                });
+                renderRecord(sessionRecords[0]);
+                updateRecordCount();
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // 拖拽上传
+        const uploadZone = document.getElementById('uploadZone');
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const input = document.getElementById('fileInput');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                uploadFile(input);
+            }
+        });
+
+        // 添加 fadeIn 动画
+        const style = document.createElement('style');
+        style.textContent = '@keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }';
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

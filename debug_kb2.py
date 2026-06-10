@@ -1,0 +1,18 @@
+from agent_service import get_agent_service
+
+service = get_agent_service()
+
+# 模拟完整对话流程
+session_id = 'debug_session_2'
+
+# 第一轮：建立健康咨询意图
+print('=== Round 1: 失眠症状 ===')
+result1 = service.process_message('我最近总是失眠', session_id)
+print(f"Intent: {result1['intent']}, Action: {result1['next_action']}, State: {result1['state']}")
+
+# 第二轮：用户要求推荐
+print('\n=== Round 2: 要求推荐 ===')
+result2 = service.process_message('有什么产品推荐吗', session_id)
+print(f"Intent: {result2['intent']}, Action: {result2['next_action']}, State: {result2['state']}")
+print(f"Response: {result2['response'][:100]}...")
+print(f"Recommended products: {result2.get('recommended_products', [])}")

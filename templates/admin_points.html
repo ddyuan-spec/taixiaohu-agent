@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 积分管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; }
+        .stat-card .stat-label { color: #6c757d; font-size: 0.85rem; }
+        .account-row {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .account-row:hover { background: #f6ffed; }
+        .account-row:last-child { border-bottom: none; }
+        .tx-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .tx-item:last-child { border-bottom: none; }
+        .tx-earn { color: #43e97b; font-weight: 600; }
+        .tx-consume { color: #ff6b6b; font-weight: 600; }
+        .empty-state { text-align: center; padding: 60px; color: #999; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/points' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0"><i class="bi bi-coin me-2"></i>积分管理</h4>
+                    <button class="btn btn-outline-success btn-sm" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                    </button>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                                        <i class="bi bi-people"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="totalUsers">0</div>
+                                        <div class="stat-label">积分用户</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                                        <i class="bi bi-coin"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="totalPoints">0</div>
+                                        <div class="stat-label">总积分发放</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-danger bg-opacity-10 text-danger me-3">
+                                        <i class="bi bi-cart-x"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="totalConsumed">0</div>
+                                        <div class="stat-label">总积分消耗</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                                        <i class="bi bi-wallet2"></i>
+                                    </div>
+                                    <div>
+                                        <div class="stat-value" id="totalAvailable">0</div>
+                                        <div class="stat-label">可用积分余额</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- 用户积分账户 -->
+                    <div class="col-md-6">
+                        <div class="card content-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-people me-2"></i>用户积分账户</span>
+                                <small class="text-muted" id="accountCount">共 0 条</small>
+                            </div>
+                            <div id="accountList">
+                                <div class="empty-state">
+                                    <i class="bi bi-people" style="font-size:48px;color:#ccc;"></i>
+                                    <p class="mt-3">暂无用户积分数据</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 积分流水 -->
+                    <div class="col-md-6">
+                        <div class="card content-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-clock-history me-2"></i>积分流水</span>
+                                <small class="text-muted" id="txCount">共 0 条</small>
+                            </div>
+                            <div id="transactionList">
+                                <div class="empty-state">
+                                    <i class="bi bi-clock-history" style="font-size:48px;color:#ccc;"></i>
+                                    <p class="mt-3">暂无流水记录</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allAccounts = [];
+        let allTransactions = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPointsData();
+        });
+
+        async function loadPointsData() {
+            try {
+                const [accountsResp, txResp] = await Promise.all([
+                    fetch('/api/admin/points/accounts'),
+                    fetch('/api/admin/points/transactions?limit=100')
+                ]);
+                const accountsData = await accountsResp.json();
+                const txData = await txResp.json();
+
+                if (accountsData.success) {
+                    allAccounts = accountsData.accounts || [];
+                    renderAccounts(allAccounts);
+                    updateStats(allAccounts);
+                }
+                if (txData.success) {
+                    allTransactions = txData.transactions || [];
+                    renderTransactions(allTransactions);
+                }
+            } catch (e) {
+                console.error('加载积分数据失败:', e);
+                showToast('加载失败', 'error');
+            }
+        }
+
+        function updateStats(accounts) {
+            document.getElementById('totalUsers').textContent = accounts.length;
+            const totalPoints = accounts.reduce((s, a) => s + (a.total_points || 0), 0);
+            const totalConsumed = accounts.reduce((s, a) => s + (a.consumed_points || 0), 0);
+            const totalAvailable = accounts.reduce((s, a) => s + (a.available_points || 0), 0);
+            document.getElementById('totalPoints').textContent = totalPoints.toLocaleString();
+            document.getElementById('totalConsumed').textContent = totalConsumed.toLocaleString();
+            document.getElementById('totalAvailable').textContent = totalAvailable.toLocaleString();
+        }
+
+        function renderAccounts(accounts) {
+            const container = document.getElementById('accountList');
+            document.getElementById('accountCount').textContent = `共 ${accounts.length} 条`;
+
+            if (accounts.length === 0) {
+                container.innerHTML = `<div class="empty-state">
+                    <i class="bi bi-people" style="font-size:48px;color:#ccc;"></i>
+                    <p class="mt-3">暂无用户积分数据</p>
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = accounts.map(a => `
+                <div class="account-row" onclick="filterByUser('${a.session_id}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#fa709a,#fee140);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold" style="font-size:0.85rem;">${a.session_id}</div>
+                                <div class="text-muted" style="font-size:0.75rem;">创建于 ${formatTime(a.created_at)}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success" style="font-size:1rem;">${a.available_points || 0}</div>
+                            <div class="text-muted" style="font-size:0.7rem;">可用积分</div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-1" style="font-size:0.75rem;color:#888;padding-left:44px;">
+                        <span>累计: ${a.total_points || 0}</span>
+                        <span>已用: ${a.consumed_points || 0}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTransactions(transactions) {
+            const container = document.getElementById('transactionList');
+            document.getElementById('txCount').textContent = `共 ${transactions.length} 条`;
+
+            if (transactions.length === 0) {
+                container.innerHTML = `<div class="empty-state">
+                    <i class="bi bi-clock-history" style="font-size:48px;color:#ccc;"></i>
+                    <p class="mt-3">暂无流水记录</p>
+                </div>`;
+                return;
+            }
+
+            const sourceMap = {
+                'share': '分享推广',
+                'checkin': '每日打卡',
+                'dialogue': '对话互动',
+                'shop': '商城兑换',
+                'initial': '初始积分',
+                'admin': '管理员调整'
+            };
+            const sourceIcons = {
+                'share': 'bi-share',
+                'checkin': 'bi-calendar-check',
+                'dialogue': 'bi-chat-dots',
+                'shop': 'bi-cart',
+                'initial': 'bi-gift',
+                'admin': 'bi-shield'
+            };
+
+            container.innerHTML = transactions.map(tx => {
+                const isEarn = tx.transaction_type === 'earn';
+                const source = sourceMap[tx.source] || tx.source;
+                const icon = sourceIcons[tx.source] || 'bi-coin';
+                return `
+                <div class="tx-item">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:32px;height:32px;border-radius:50%;background:${isEarn ? '#e6f7ff' : '#fff1f0'};display:flex;align-items:center;justify-content:center;">
+                            <i class="bi ${icon}" style="color:${isEarn ? '#1890ff' : '#ff4d4f'};font-size:0.8rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.85rem;">${source}</div>
+                            <div class="text-muted" style="font-size:0.72rem;">${tx.session_id} · ${formatTime(tx.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="${isEarn ? 'tx-earn' : 'tx-consume'}">${isEarn ? '+' : ''}${tx.points}</div>
+                        <div class="text-muted" style="font-size:0.7rem;">余额 ${tx.balance_after || 0}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterByUser(sessionId) {
+            const filtered = allTransactions.filter(tx => tx.session_id === sessionId);
+            renderTransactions(filtered);
+            showToast(`已筛选用户 ${sessionId} 的流水`);
+        }
+
+        function refreshData() {
+            loadPointsData();
+            showToast('数据已刷新');
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '-';
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+            } catch(e) { return iso; }
+        }
+
+        function showToast(msg, type='success') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast show ${type==='success'?'bg-success':'bg-danger'} text-white`;
+            t.innerHTML = `<div class="toast-body">${msg}</div>`;
+            t.style.minWidth = '200px';
+            c.appendChild(t);
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+        }
+    </script>
+</body>
+</html>

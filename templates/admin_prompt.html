@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 提示词配置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .prompt-nav {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 16px;
+        }
+        .prompt-nav-group {
+            margin-bottom: 16px;
+        }
+        .prompt-nav-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding-left: 8px;
+        }
+        .prompt-nav-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 2px;
+        }
+        .prompt-nav-item:hover {
+            background: #f0f0f0;
+        }
+        .prompt-nav-item.active {
+            background: #e6f7ff;
+            color: #1890ff;
+            font-weight: 600;
+        }
+        .prompt-nav-item i {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+        .prompt-nav-item .version-badge {
+            margin-left: auto;
+            font-size: 10px;
+            background: #f0f0f0;
+            padding: 1px 6px;
+            border-radius: 10px;
+            color: #888;
+        }
+        .prompt-nav-item.active .version-badge {
+            background: #1890ff;
+            color: #fff;
+        }
+        .prompt-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .prompt-editor-header h5 {
+            margin: 0;
+            font-weight: 600;
+        }
+        .prompt-textarea {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 400px;
+        }
+        .char-count {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .preview-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            border: 1px solid #e9ecef;
+        }
+        .preview-box h6 {
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        .tip-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }
+        .tip-box i { color: #856404; }
+        .success-toast, .error-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 250px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-published { background: #d4edda; color: #155724; }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .history-item {
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .history-item:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast 容器 -->
+    <div id="successToast" class="toast success-toast bg-success text-white" role="alert">
+        <div class="toast-body">
+            <i class="bi bi-check-circle me-2"></i>
+            <span id="successMsg">保存成功！</span>
+        </div>
+    </div>
+    <div id="errorToast" class="toast error-toast bg-danger text-white" role="alert">
+        <div class="toast-body">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            <span id="errorMsg">保存失败</span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/prompt' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">
+                        <i class="bi bi-chat-left-text me-2"></i>提示词配置
+                    </h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="exportPrompts()">
+                            <i class="bi bi-download me-1"></i>导出
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('importFile').click()">
+                            <i class="bi bi-upload me-1"></i>导入
+                        </button>
+                        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importPrompts(this)">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- 左侧导航 -->
+                    <div class="col-md-3">
+                        <div class="prompt-nav">
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">核心</div>
+                                <div class="prompt-nav-item active" data-prompt="system_prompt" onclick="selectPrompt('system_prompt')">
+                                    <i class="bi bi-person-circle"></i>全局人设
+                                    <span class="version-badge" id="badge-system_prompt">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">总控决策</div>
+                                <div class="prompt-nav-item" data-prompt="orchestrator" onclick="selectPrompt('orchestrator')">
+                                    <i class="bi bi-diagram-3"></i>总控决策
+                                    <span class="version-badge" id="badge-orchestrator">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">安全守卫</div>
+                                <div class="prompt-nav-item" data-prompt="safety_guard" onclick="selectPrompt('safety_guard')">
+                                    <i class="bi bi-shield-check"></i>安全守卫
+                                    <span class="version-badge" id="badge-safety_guard">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">意图识别</div>
+                                <div class="prompt-nav-item" data-prompt="intent_router" onclick="selectPrompt('intent_router')">
+                                    <i class="bi bi-signpost-split"></i>意图识别
+                                    <span class="version-badge" id="badge-intent_router">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">画像模块</div>
+                                <div class="prompt-nav-item" data-prompt="profile_extract" onclick="selectPrompt('profile_extract')">
+                                    <i class="bi bi-person-vcard"></i>画像抽取
+                                    <span class="version-badge" id="badge-profile_extract">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="profile_collect" onclick="selectPrompt('profile_collect')">
+                                    <i class="bi bi-person-plus"></i>画像收集
+                                    <span class="version-badge" id="badge-profile_collect">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="profile_followup" onclick="selectPrompt('profile_followup')">
+                                    <i class="bi bi-chat-dots"></i>画像追问
+                                    <span class="version-badge" id="badge-profile_followup">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="profile_switch" onclick="selectPrompt('profile_switch')">
+                                    <i class="bi bi-arrow-left-right"></i>关联人切换
+                                    <span class="version-badge" id="badge-profile_switch">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">业务模块</div>
+                                <div class="prompt-nav-item" data-prompt="symptom_collect" onclick="selectPrompt('symptom_collect')">
+                                    <i class="bi bi-clipboard-pulse"></i>症状收集
+                                    <span class="version-badge" id="badge-symptom_collect">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="recommend_engine" onclick="selectPrompt('recommend_engine')">
+                                    <i class="bi bi-stars"></i>推荐引擎
+                                    <span class="version-badge" id="badge-recommend_engine">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="product_consult" onclick="selectPrompt('product_consult')">
+                                    <i class="bi bi-capsule"></i>产品咨询
+                                    <span class="version-badge" id="badge-product_consult">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="knowledge_qa" onclick="selectPrompt('knowledge_qa')">
+                                    <i class="bi bi-book"></i>知识问答
+                                    <span class="version-badge" id="badge-knowledge_qa">v1</span>
+                                </div>
+                            </div>
+                            <div class="prompt-nav-group">
+                                <div class="prompt-nav-title">服务保障</div>
+                                <div class="prompt-nav-item" data-prompt="boundary_handle" onclick="selectPrompt('boundary_handle')">
+                                    <i class="bi bi-border-style"></i>边界处理
+                                    <span class="version-badge" id="badge-boundary_handle">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="cs_transfer" onclick="selectPrompt('cs_transfer')">
+                                    <i class="bi bi-headset"></i>客服转接
+                                    <span class="version-badge" id="badge-cs_transfer">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="disclaimer" onclick="selectPrompt('disclaimer')">
+                                    <i class="bi bi-exclamation-triangle"></i>免责声明
+                                    <span class="version-badge" id="badge-disclaimer">v1</span>
+                                </div>
+                                <div class="prompt-nav-item" data-prompt="welcome" onclick="selectPrompt('welcome')">
+                                    <i class="bi bi-hand-thumbs-up"></i>欢迎语
+                                    <span class="version-badge" id="badge-welcome">v1</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧编辑区 -->
+                    <div class="col-md-9">
+                        <div class="card content-card">
+                            <div class="card-header">
+                                <div class="prompt-editor-header">
+                                    <div>
+                                        <h5 id="currentPromptName">全局人设</h5>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <span class="status-badge status-published" id="currentStatus">已发布</span>
+                                            <span class="char-count" id="charCount">字符数：0</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="saveAsDraft()">
+                                            <i class="bi bi-save me-1"></i>保存草稿
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="publishPrompt()">
+                                            <i class="bi bi-check-lg me-1"></i>发布
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <textarea class="form-control prompt-textarea" id="promptEditor"
+                                          placeholder="在此输入提示词内容..."></textarea>
+                            </div>
+                            <div class="card-footer bg-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <button class="btn btn-outline-warning btn-sm" onclick="resetToDefault()">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>恢复默认
+                                        </button>
+                                        <button class="btn btn-outline-info btn-sm ms-2" onclick="togglePreview()">
+                                            <i class="bi bi-eye me-1"></i>实时预览
+                                        </button>
+                                    </div>
+                                    <div class="text-muted" style="font-size:12px;">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        <span id="promptDesc">定义智能体的角色、能力边界和回复风格</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 实时预览 -->
+                        <div class="card content-card mt-3" id="previewCard" style="display:none;">
+                            <div class="card-header">
+                                <i class="bi bi-eye me-2"></i>实时预览
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size:12px;">测试输入</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm" id="previewInput"
+                                               placeholder="输入测试对话..." value="你好，我最近睡眠不好怎么办？">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="runPreview()">
+                                            <i class="bi bi-play"></i>测试
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="previewResult" class="preview-box">
+                                    <p class="text-muted text-center" style="font-size:13px;">点击测试按钮查看预览效果</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 版本历史 -->
+                        <div class="card content-card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-clock-history me-2"></i>版本历史</span>
+                                <span class="text-muted" style="font-size:12px;">最近5个版本</span>
+                            </div>
+                            <div class="card-body" id="historyList">
+                                <p class="text-muted text-center" style="font-size:13px;">暂无历史版本</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 默认提示词数据
+        const defaultPrompts = {
+            system_prompt: {
+                name: '全局人设',
+                desc: '定义智能体的角色、能力边界和回复风格',
+                content: `你是「泰小虎」，一位专业、温和、耐心、贴心的健康顾问。
+你的服务对象是45-70岁的中老年用户。他们可能不太熟悉互联网操作，可能对健康问题感到焦虑和不安，需要你用最简单、最温暖的方式为他们提供帮助。
+
+# 核心能力
+1. 健康评估：通过对话了解用户的身体状况，提供初步的健康方向性建议
+2. 症状自查：帮助用户梳理症状信息，提供可能的健康方向参考
+3. 保健品推荐：根据用户健康状况和需求，推荐合适的保健产品
+4. 健康知识科普：用通俗易懂的语言解答健康相关问题
+
+# 能力边界声明（非常重要）
+1. 你是健康顾问，不是医生。你提供的是健康方向性建议，不是医学诊断
+2. 你不能给出具体的疾病诊断结论
+3. 你不能开具处方或推荐具体的处方药物
+4. 你不能替代专业医疗机构的检查和治疗
+5. 当用户描述的症状可能涉及严重疾病时，你必须立即建议用户就医
+
+# 输出规范
+1. 字数限制：每次回复不超过200个汉字
+2. 语言要求：使用简单易懂的日常用语
+3. 称呼规范：称呼用户为"您"，保持尊重和亲切`,
+                version: 1
+            },
+            orchestrator: {
+                name: '总控决策',
+                desc: '控制对话流程，决定下一步调用哪个模块',
+                content: `你是泰小虎的总控决策模块。你的职责是根据当前对话状态和用户输入，决定下一步应该调用哪个功能模块。
+
+# 可用模块
+1. intent_router - 意图识别：当用户输入意图不明确时
+2. profile_extract - 画像抽取：从用户对话中提取画像信息
+3. profile_collect - 画像收集：主动询问用户画像信息
+4. symptom_collect - 症状收集：收集用户症状描述
+5. recommend_engine - 推荐引擎：推荐合适的保健品
+6. product_consult - 产品咨询：解答产品相关问题
+7. knowledge_qa - 知识问答：回答健康知识问题
+8. safety_guard - 安全守卫：检查内容安全性
+9. boundary_handle - 边界处理：处理超出能力范围的问题
+10. cs_transfer - 客服转接：需要转接人工客服时
+
+# 决策规则
+- 新用户优先收集画像
+- 有明确健康咨询意图时进行症状收集
+- 提及具体产品时触发产品咨询
+- 涉及用药安全时必须先调用安全守卫
+- 无法处理时转接人工客服`,
+                version: 1
+            },
+            safety_guard: {
+                name: '安全守卫',
+                desc: '检查用户输入和系统回复的安全性，拦截敏感内容',
+                content: `你是泰小虎的安全守卫模块。你的职责是检查所有用户输入和系统回复，确保内容安全合规。
+
+# 检查项
+1. 医疗安全：用户是否要求诊断疾病、开具处方
+2. 用药安全：是否涉及处方药推荐、停药建议
+3. 敏感信息：是否涉及个人隐私泄露
+4. 违规内容：是否包含违法违规信息
+5. 恶意攻击：是否包含攻击、辱骂等内容
+
+# 处理规则
+- 发现医疗安全风险：礼貌拒绝并建议就医
+- 发现用药安全风险：强调保健品不能替代药物
+- 发现敏感信息：提醒用户保护隐私
+- 发现违规内容：拒绝回答并记录
+- 发现恶意攻击：保持冷静，不与之争论
+
+# 输出格式
+{"safe": true/false, "risk_type": "类型", "suggestion": "处理建议"}`,
+                version: 1
+            },
+            intent_router: {
+                name: '意图识别',
+                desc: '识别用户输入的意图类型，为后续处理提供依据',
+                content: `你是泰小虎的意图识别模块。你的职责是准确识别用户的输入意图。
+
+# 意图分类
+1. health_consult - 健康咨询：询问健康问题、症状
+2. product_recommend - 产品推荐：寻求保健品推荐
+3. product_consult - 产品咨询：询问具体产品信息
+4. knowledge_query - 知识问答：询问健康知识
+5. profile_update - 画像更新：提供或更新个人信息
+6. purchase_intent - 购买意向：表达购买意愿
+7. greeting - 问候：打招呼、寒暄
+8. complaint - 投诉：表达不满
+9. cs_request - 客服请求：要求人工服务
+10. other - 其他：无法归类的意图
+
+# 输出格式
+{"intent": "意图类型", "confidence": 0.95, "entities": {"key": "value"}}`,
+                version: 1
+            },
+            profile_extract: {
+                name: '画像抽取',
+                desc: '从用户对话中自动抽取画像信息',
+                content: `你是泰小虎的画像抽取模块。你的职责是从用户的自然语言对话中，自动提取用户的画像信息。
+
+# 可抽取字段
+1. age - 年龄
+2. gender - 性别
+3. chronic_diseases - 慢性病
+4. allergy_history - 过敏史
+5. current_medication - 当前用药
+6. health_concerns - 健康关注点
+7. family_history - 家族病史
+8. lifestyle - 生活习惯
+
+# 抽取规则
+- 只抽取用户明确提及的信息
+- 对模糊信息进行合理推断
+- 不主动询问，只从已有对话中提取
+- 提取后更新画像完整度
+
+# 输出格式
+{"extracted": {"field": "value"}, "confidence": 0.9}`,
+                version: 1
+            },
+            profile_collect: {
+                name: '画像收集',
+                desc: '主动询问并收集用户画像信息',
+                content: `你是泰小虎的画像收集模块。你的职责是在合适的时机，主动询问用户必要的画像信息。
+
+# 收集策略
+1. 新用户首次对话时，温和地询问基本信息
+2. 每次对话收集1-2个字段，避免连续追问
+3. 根据已有信息推断缺失信息
+4. 用自然的方式融入对话，不要像问卷调查
+
+# 收集字段优先级
+1. 年龄、性别（最基础）
+2. 慢性病史、过敏史（安全相关）
+3. 当前用药（推荐相关）
+4. 健康关注点（服务相关）
+
+# 话术示例
+"为了更好地为您服务，能否告诉我您的年龄？"
+"了解到您有高血压，平时在服用什么药物吗？"`,
+                version: 1
+            },
+            profile_followup: {
+                name: '画像追问',
+                desc: '针对已有画像信息进行追问，完善用户画像',
+                content: `你是泰小虎的画像追问模块。你的职责是针对已收集的画像信息，进行合理的追问以完善画像。
+
+# 追问策略
+1. 基于已有信息推断可能缺失的相关信息
+2. 追问要自然，与当前话题相关
+3. 每次只追问一个点
+4. 用户拒绝追问时，尊重用户意愿
+
+# 追问场景
+- 知道年龄后，询问是否有慢性病
+- 知道慢性病后，询问当前用药
+- 知道用药后，询问过敏史
+- 知道健康关注点后，询问生活习惯
+
+# 话术示例
+"您提到关注心血管健康，请问平时有高血压或高血脂吗？"
+"了解到您在服用降压药，有没有对其他药物或食物过敏？"`,
+                version: 1
+            },
+            profile_switch: {
+                name: '关联人切换',
+                desc: '处理用户为家人咨询时的关联人切换',
+                content: `你是泰小虎的关联人切换模块。你的职责是处理用户为家人（父母、配偶、子女）咨询时的画像切换。
+
+# 切换场景
+1. 用户明确说"帮我爸/妈问问"
+2. 用户提到"我孩子"
+3. 用户说"给我爱人"
+4. 用户切换咨询对象时
+
+# 处理规则
+1. 确认关联人关系
+2. 询问或复用关联人的画像信息
+3. 推荐产品时考虑关联人的情况
+4. 记录关联人信息以便后续使用
+
+# 话术示例
+"好的，为您父亲咨询。请问您父亲今年多大年纪？"
+"了解到您之前为母亲咨询过，这次还是为她咨询吗？"`,
+                version: 1
+            },
+            symptom_collect: {
+                name: '症状收集',
+                desc: '收集用户的症状描述，为健康建议做准备',
+                content: `你是泰小虎的症状收集模块。你的职责是通过对话收集用户的症状信息。
+
+# 收集维度
+1. 主要症状：用户当前最困扰的症状
+2. 持续时间：症状出现多久了
+3. 严重程度：轻微/中等/严重
+4. 伴随症状：是否有其他相关症状
+5. 既往史：是否有过类似情况
+6. 诱因：是否有明显的诱发因素
+
+# 收集原则
+1. 循序渐进，不要一次性问太多
+2. 用通俗语言，避免医学术语
+3. 对敏感症状要温和询问
+4. 收集到足够信息后及时停止
+
+# 安全提醒
+- 症状严重时必须建议就医
+- 不给出诊断结论
+- 强调只是初步了解`,
+                version: 1
+            },
+            recommend_engine: {
+                name: '推荐引擎',
+                desc: '根据用户画像和需求推荐合适的保健品',
+                content: `你是泰小虎的推荐引擎模块。你的职责是根据用户的画像信息和需求，推荐合适的保健品。
+
+# 推荐原则
+1. 安全性第一：考虑用户的慢性病、过敏史、用药情况
+2. 个性化：根据年龄、性别、健康状况定制
+3. 适度推荐：每次推荐1-3款产品
+4. 说明理由：解释为什么推荐这款产品
+
+# 推荐流程
+1. 确认用户画像完整度
+2. 分析用户健康需求
+3. 检索知识库匹配产品
+4. 安全检查（禁忌症、相互作用）
+5. 生成推荐话术
+
+# 话术要求
+- 说明产品的主要功效
+- 提及适用人群
+- 说明服用方法
+- 提醒注意事项`,
+                version: 1
+            },
+            product_consult: {
+                name: '产品咨询',
+                desc: '解答用户关于具体保健品的问题',
+                content: `你是泰小虎的产品咨询模块。你的职责是解答用户关于具体保健品的各种问题。
+
+# 可解答问题
+1. 产品功效：这款产品有什么作用
+2. 适用人群：适合什么人吃
+3. 服用方法：怎么吃、吃多少
+4. 注意事项：有什么禁忌
+5. 价格信息：多少钱、有没有优惠
+6. 产品对比：几款产品有什么区别
+
+# 回答原则
+1. 基于知识库准确回答
+2. 不夸大功效
+3. 明确说明适用人群和禁忌
+4. 涉及药物相互作用时建议咨询医生`,
+                version: 1
+            },
+            knowledge_qa: {
+                name: '知识问答',
+                desc: '回答用户关于健康知识的通用问题',
+                content: `你是泰小虎的知识问答模块。你的职责是回答用户关于健康知识的通用问题。
+
+# 知识范围
+1. 营养学知识
+2. 常见疾病预防
+3. 健康生活方式
+4. 保健品常识
+5. 季节养生
+6. 运动健康
+
+# 回答原则
+1. 基于权威来源（如膳食指南）
+2. 用通俗语言解释
+3. 不给出医疗建议
+4. 复杂问题建议就医
+5. 引用知识库来源
+
+# 安全边界
+- 不诊断疾病
+- 不推荐处方药
+- 强调个体差异`,
+                version: 1
+            },
+            boundary_handle: {
+                name: '边界处理',
+                desc: '处理超出智能体能力范围的问题',
+                content: `你是泰小虎的边界处理模块。你的职责是优雅地处理超出智能体能力范围的问题。
+
+# 超出能力的情况
+1. 要求疾病诊断
+2. 要求开具处方
+3. 涉及急诊情况
+4. 要求专业医疗检查解读
+5. 涉及法律、财务等非健康领域
+
+# 处理策略
+1. 礼貌说明能力边界
+2. 提供替代建议
+3. 必要时建议就医或转人工
+4. 保持友好态度
+
+# 话术示例
+"抱歉，我无法为您做出疾病诊断。建议您尽快到医院进行检查。"
+"这个问题超出了我的专业范围，建议您咨询专业的医生。"
+"我帮您转接到人工客服，他们可以更好地帮助您。"`,
+                version: 1
+            },
+            cs_transfer: {
+                name: '客服转接',
+                desc: '处理需要人工客服介入的场景',
+                content: `你是泰小虎的客服转接模块。你的职责是判断何时需要转接人工客服，并妥善处理转接过程。
+
+# 转接场景
+1. 用户明确要求人工服务
+2. 问题超出AI能力范围
+3. 用户情绪激动需要安抚
+4. 涉及投诉或售后
+5. 复杂订单问题
+
+# 转接前处理
+1. 记录对话上下文
+2. 总结用户需求
+3. 告知用户转接原因
+4. 说明预计等待时间
+
+# 话术示例
+"我帮您转接到人工客服，他们可以更好地解决您的问题。"
+"由于您的问题比较特殊，我为您安排专业客服处理，请稍等。"`,
+                version: 1
+            },
+            disclaimer: {
+                name: '免责声明',
+                desc: '在必要时输出医学免责声明',
+                content: `你是泰小虎的免责声明模块。你的职责是在必要时输出合适的医学免责声明。
+
+# 使用场景
+1. 提供健康建议后
+2. 推荐保健品后
+3. 回答医疗相关问题后
+4. 用户提及具体疾病时
+
+# 免责声明模板
+1. 标准版："以上建议仅供参考，不能替代专业医疗诊断。如有不适，请及时就医。"
+2. 用药版："保健品不能替代药物治疗，服用前请咨询医生。"
+3. 严重症状版："您描述的症状可能涉及严重疾病，建议立即就医检查。"
+
+# 输出规则
+- 简洁明了
+- 不引起恐慌
+- 强调就医重要性`,
+                version: 1
+            },
+            welcome: {
+                name: '欢迎语',
+                desc: '定义智能体的欢迎语和开场白',
+                content: `你是泰小虎的欢迎语模块。你的职责是生成合适的欢迎语和开场白。
+
+# 欢迎语策略
+1. 新用户：自我介绍 + 询问画像
+2. 老用户：称呼姓名 + 延续上次话题
+3. 回访用户：询问上次建议的效果
+
+# 欢迎语示例
+新用户："您好！我是泰小虎，您的健康顾问。为了更好地为您服务，能否告诉我您的年龄和性别？"
+老用户："您好{name}！欢迎回来。上次推荐的{product}感觉怎么样？"
+回访用户："您好{name}！最近{concern}的情况有改善吗？"
+
+# 输出要求
+- 热情友好
+- 简洁明了
+- 引导对话`,
+                version: 1
+            }
+        };
+
+        let currentPromptId = 'system_prompt';
+        let promptsData = {};
+        let hasChanges = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPrompts();
+        });
+
+        // 加载提示词数据
+        async function loadPrompts() {
+            try {
+                const resp = await fetch('/api/admin/prompts');
+                const data = await resp.json();
+                if (data.success && data.prompts) {
+                    promptsData = data.prompts;
+                } else {
+                    promptsData = {};
+                }
+                // 用默认值填充缺失的提示词
+                for (const key in defaultPrompts) {
+                    if (!promptsData[key]) {
+                        promptsData[key] = {...defaultPrompts[key]};
+                    }
+                }
+                selectPrompt('system_prompt');
+                updateVersionBadges();
+            } catch (e) {
+                console.error('加载提示词失败:', e);
+                promptsData = {...defaultPrompts};
+                selectPrompt('system_prompt');
+            }
+        }
+
+        // 选择提示词
+        function selectPrompt(promptId) {
+            if (hasChanges) {
+                if (!confirm('当前修改未保存，是否放弃修改？')) {
+                    return;
+                }
+            }
+            currentPromptId = promptId;
+            const prompt = promptsData[promptId] || defaultPrompts[promptId];
+
+            // 更新导航高亮
+            document.querySelectorAll('.prompt-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-prompt="${promptId}"]`).classList.add('active');
+
+            // 更新编辑器
+            document.getElementById('currentPromptName').textContent = prompt.name;
+            document.getElementById('promptDesc').textContent = prompt.desc;
+            document.getElementById('promptEditor').value = prompt.content || '';
+            document.getElementById('charCount').textContent = '字符数：' + (prompt.content || '').length;
+            document.getElementById('currentStatus').textContent = prompt.status === 'published' ? '已发布' : '草稿';
+            document.getElementById('currentStatus').className = 'status-badge ' + (prompt.status === 'published' ? 'status-published' : 'status-draft');
+
+            // 更新版本历史
+            renderHistory(prompt);
+            hasChanges = false;
+        }
+
+        // 更新版本徽章
+        function updateVersionBadges() {
+            for (const key in promptsData) {
+                const badge = document.getElementById('badge-' + key);
+                if (badge && promptsData[key]) {
+                    badge.textContent = 'v' + (promptsData[key].version || 1);
+                }
+            }
+        }
+
+        // 渲染版本历史
+        function renderHistory(prompt) {
+            const historyList = document.getElementById('historyList');
+            const history = prompt.history || [];
+            if (history.length === 0) {
+                historyList.innerHTML = '<p class="text-muted text-center" style="font-size:13px;">暂无历史版本</p>';
+                return;
+            }
+            historyList.innerHTML = history.slice(-5).reverse().map((h, i) => `
+                <div class="history-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-secondary" style="font-size:10px;">v${h.version}</span>
+                        <span class="ms-2" style="font-size:12px; color:#666;">${h.updated_at ? h.updated_at.slice(0,16) : '-'}</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" style="font-size:11px; padding:2px 8px;" onclick="rollbackVersion(${h.version})">
+                        <i class="bi bi-arrow-counterclockwise"></i>回滚
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 监听编辑器输入
+        document.getElementById('promptEditor').addEventListener('input', function() {
+            document.getElementById('charCount').textContent = '字符数：' + this.value.length;
+            hasChanges = true;
+        });
+
+        // 保存草稿
+        async function saveAsDraft() {
+            await savePrompt('draft');
+        }
+
+        // 发布
+        async function publishPrompt() {
+            await savePrompt('published');
+        }
+
+        // 保存提示词
+        async function savePrompt(status) {
+            const content = document.getElementById('promptEditor').value;
+            if (!content.trim()) {
+                showError('提示词内容不能为空');
+                return;
+            }
+
+            const prompt = promptsData[currentPromptId] || defaultPrompts[currentPromptId];
+            const oldVersion = prompt.version || 1;
+
+            // 保存历史
+            if (!prompt.history) prompt.history = [];
+            prompt.history.push({
+                version: oldVersion,
+                content: prompt.content,
+                updated_at: new Date().toISOString()
+            });
+            if (prompt.history.length > 10) prompt.history = prompt.history.slice(-10);
+
+            // 更新当前
+            prompt.content = content;
+            prompt.version = oldVersion + 1;
+            prompt.status = status;
+            prompt.updated_at = new Date().toISOFormat();
+
+            try {
+                const resp = await fetch('/api/admin/prompts/' + currentPromptId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prompt)
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showSuccess(status === 'published' ? '提示词已发布！' : '草稿已保存');
+                    promptsData[currentPromptId] = prompt;
+                    updateVersionBadges();
+                    renderHistory(prompt);
+                    hasChanges = false;
+                    document.getElementById('currentStatus').textContent = status === 'published' ? '已发布' : '草稿';
+                    document.getElementById('currentStatus').className = 'status-badge ' + (status === 'published' ? 'status-published' : 'status-draft');
+                } else {
+                    showError('保存失败：' + data.error);
+                }
+            } catch (e) {
+                showError('保存失败：' + e.message);
+            }
+        }
+
+        // 恢复默认
+        function resetToDefault() {
+            if (!confirm('确定要恢复到默认提示词吗？当前修改将丢失。')) return;
+            const defaultPrompt = defaultPrompts[currentPromptId];
+            if (defaultPrompt) {
+                document.getElementById('promptEditor').value = defaultPrompt.content;
+                document.getElementById('charCount').textContent = '字符数：' + defaultPrompt.content.length;
+                hasChanges = true;
+                showSuccess('已恢复默认提示词');
+            }
+        }
+
+        // 切换预览
+        function togglePreview() {
+            const card = document.getElementById('previewCard');
+            card.style.display = card.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 运行预览
+        function runPreview() {
+            const input = document.getElementById('previewInput').value;
+            const result = document.getElementById('previewResult');
+            result.innerHTML = `
+                <div class="mb-2">
+                    <span class="badge bg-primary">用户</span>
+                    <span class="ms-2">${escapeHtml(input)}</span>
+                </div>
+                <div>
+                    <span class="badge bg-success">泰小虎</span>
+                    <div class="mt-2 p-2 bg-light rounded">
+                        <strong>[预览模式]</strong> 根据当前「${promptsData[currentPromptId]?.name || ''}」提示词，系统将生成回复。<br>
+                        <small class="text-muted">实际效果取决于完整的多模块协作。</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 回滚版本
+        async function rollbackVersion(version) {
+            if (!confirm(`确定要回滚到 v${version} 吗？`)) return;
+            const prompt = promptsData[currentPromptId];
+            const historyItem = (prompt.history || []).find(h => h.version === version);
+            if (historyItem) {
+                document.getElementById('promptEditor').value = historyItem.content;
+                document.getElementById('charCount').textContent = '字符数：' + historyItem.content.length;
+                hasChanges = true;
+                showSuccess(`已回滚到 v${version}，请保存以生效`);
+            }
+        }
+
+        // 导出
+        function exportPrompts() {
+            const dataStr = JSON.stringify(promptsData, null, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'prompts_' + new Date().toISOString().slice(0,10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showSuccess('提示词已导出');
+        }
+
+        // 导入
+        function importPrompts(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (confirm(`确定要导入提示词配置吗？这将覆盖现有的 ${Object.keys(imported).length} 个模块配置。`)) {
+                        promptsData = imported;
+                        selectPrompt(currentPromptId);
+                        updateVersionBadges();
+                        showSuccess('提示词已导入');
+                    }
+                } catch (err) {
+                    showError('导入失败：文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 显示成功提示
+        function showSuccess(msg) {
+            document.getElementById('successMsg').textContent = msg;
+            const toast = new bootstrap.Toast(document.getElementById('successToast'));
+            toast.show();
+        }
+
+        // 显示错误提示
+        function showError(msg) {
+            document.getElementById('errorMsg').textContent = msg;
+            const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+            toast.show();
+        }
+    </script>
+</body>
+</html>

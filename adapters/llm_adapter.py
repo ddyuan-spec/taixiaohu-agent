@@ -1,0 +1,242 @@
+"""
+LLM 调用适配器
+支持阿里云百炼（DashScope）、OpenAI 兼容接口
+"""
+import json
+import os
+import requests
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field
+
+# ============================================================
+# 配置管理
+# ============================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+LLM_CONFIG_FILE = os.path.join(DATA_DIR, "llm_config.json")
+
+# 默认 LLM 配置
+DEFAULT_LLM_CONFIG = {
+    "provider": "aliyun",           # aliyun / openai_compatible
+    "model": "qwen-plus",
+    "api_key": "",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "enabled": False,               # 是否启用真实 LLM
+    "fallback_to_mock": True        # LLM 失败时回退到模拟回复
+}
+
+# 预设模型列表
+PRESET_MODELS = {
+    "aliyun": {
+        "name": "阿里云百炼（通义千问）",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "models": [
+            {"id": "qwen-turbo", "name": "Qwen Turbo（快速）", "desc": "速度快、成本低"},
+            {"id": "qwen-plus", "name": "Qwen Plus（推荐）", "desc": "均衡性能与成本"},
+            {"id": "qwen-max", "name": "Qwen Max（最强）", "desc": "能力最强、成本较高"},
+            {"id": "qwen-long", "name": "Qwen Long（长文本）", "desc": "支持超长上下文"},
+        ]
+    },
+    "openai_compatible": {
+        "name": "OpenAI 兼容接口",
+        "base_url": "",
+        "models": [
+            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "desc": "OpenAI 快速模型"},
+            {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "desc": "OpenAI 轻量模型"},
+            {"id": "deepseek-chat", "name": "DeepSeek Chat", "desc": "DeepSeek 对话模型"},
+        ]
+    }
+}
+
+
+def _ensure_data_dir():
+    """确保数据目录存在"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def load_llm_config() -> Dict:
+    """加载 LLM 配置"""
+    _ensure_data_dir()
+    if os.path.exists(LLM_CONFIG_FILE):
+        try:
+            with open(LLM_CONFIG_FILE, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                # 合并默认值，防止缺少新字段
+                for key, val in DEFAULT_LLM_CONFIG.items():
+                    if key not in config:
+                        config[key] = val
+                return config
+        except (json.JSONDecodeError, IOError):
+            pass
+    return DEFAULT_LLM_CONFIG.copy()
+
+
+def save_llm_config(config: Dict):
+    """保存 LLM 配置"""
+    _ensure_data_dir()
+    with open(LLM_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+# ============================================================
+# LLM 适配器
+# ============================================================
+@dataclass
+class LLMResponse:
+    """LLM 响应"""
+    content: str
+    success: bool = True
+    error: str = ""
+    usage: Dict = field(default_factory=dict)
+    model: str = ""
+
+
+class LLMAdapter:
+    """LLM 调用适配器"""
+
+    def __init__(self):
+        self.config = load_llm_config()
+
+    def reload_config(self):
+        """重新加载配置"""
+        self.config = load_llm_config()
+
+    @property
+    def is_enabled(self) -> bool:
+        """是否启用真实 LLM"""
+        return self.config.get("enabled", False) and bool(self.config.get("api_key", ""))
+
+    def chat(self, messages: List[Dict], temperature: float = None,
+             max_tokens: int = None) -> LLMResponse:
+        """
+        调用 LLM 进行对话
+
+        Args:
+            messages: 消息列表 [{"role": "system/user/assistant", "content": "..."}]
+            temperature: 温度参数
+            max_tokens: 最大 token 数
+
+        Returns:
+            LLMResponse
+        """
+        if not self.is_enabled:
+            return LLMResponse(
+                content="",
+                success=False,
+                error="LLM 未启用或未配置 API Key"
+            )
+
+        config = self.config
+        api_key = config.get("api_key", "")
+        base_url = config.get("base_url", "").rstrip("/")
+        model = config.get("model", "qwen-plus")
+        temp = temperature if temperature is not None else config.get("temperature", 0.7)
+        tokens = max_tokens if max_tokens is not None else config.get("max_tokens", 2000)
+
+        if not api_key:
+            return LLMResponse(
+                content="",
+                success=False,
+                error="API Key 未配置"
+            )
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temp,
+            "max_tokens": tokens
+        }
+
+        try:
+            response = requests.post(
+                f"{base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                usage = result.get("usage", {})
+                return LLMResponse(
+                    content=content,
+                    success=True,
+                    usage=usage,
+                    model=model
+                )
+            else:
+                error_msg = f"API 错误 ({response.status_code})"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail.get('error', {}).get('message', response.text[:200])}"
+                except Exception:
+                    error_msg += f": {response.text[:200]}"
+                return LLMResponse(
+                    content="",
+                    success=False,
+                    error=error_msg
+                )
+
+        except requests.Timeout:
+            return LLMResponse(
+                content="",
+                success=False,
+                error="请求超时，请稍后重试"
+            )
+        except requests.ConnectionError:
+            return LLMResponse(
+                content="",
+                success=False,
+                error="无法连接到 LLM 服务，请检查网络或 API 地址"
+            )
+        except Exception as e:
+            return LLMResponse(
+                content="",
+                success=False,
+                error=f"LLM 调用异常: {str(e)}"
+            )
+
+    def test_connection(self) -> Dict:
+        """测试 LLM 连接"""
+        if not self.config.get("api_key", ""):
+            return {"success": False, "message": "请先配置 API Key"}
+
+        messages = [{"role": "user", "content": "你好，请回复'连接成功'"}]
+        result = self.chat(messages, max_tokens=20)
+
+        if result.success:
+            return {
+                "success": True,
+                "message": f"连接成功！模型: {result.model}",
+                "response": result.content,
+                "model": result.model,
+                "usage": result.usage
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.error
+            }
+
+    def get_safe_config(self) -> Dict:
+        """获取安全配置（隐藏 API Key）"""
+        safe = self.config.copy()
+        api_key = safe.get("api_key", "")
+        if api_key:
+            if len(api_key) > 12:
+                safe["api_key"] = api_key[:8] + "****" + api_key[-4:]
+            else:
+                safe["api_key"] = "****"
+        return safe
+
+
+# 全局实例
+llm_adapter = LLMAdapter()

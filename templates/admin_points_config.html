@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 积分配置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .config-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .config-item:last-child { border-bottom: none; }
+        .config-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .config-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 52px; height: 28px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ccc; border-radius: 28px;
+            transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: ""; position: absolute;
+            height: 22px; width: 22px;
+            left: 3px; bottom: 3px;
+            background: white; border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #43e97b; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+        .help-text { font-size: 0.8rem; color: #6c757d; margin-top: 2px; }
+        .empty-state { text-align: center; padding: 60px; color: #999; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/points/config' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0"><i class="bi bi-sliders me-2"></i>积分配置</h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="resetConfig()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>重置
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="saveConfig()">
+                            <i class="bi bi-check-lg me-1"></i>保存配置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 积分规则配置 -->
+                <div class="card content-card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-gear me-2"></i>积分规则配置
+                    </div>
+                    <div id="configList">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 功能开关 -->
+                <div class="card content-card">
+                    <div class="card-header">
+                        <i class="bi bi-toggle-on me-2"></i>功能开关
+                    </div>
+                    <div id="switchList">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentConfig = {};
+
+        const configSchema = [
+            { key: 'initial_points', label: '新用户初始积分', unit: '分', icon: 'bi-gift', iconBg: 'bg-primary bg-opacity-10 text-primary', type: 'number', min: 0, max: 10000 },
+            { key: 'dialogue_points', label: '对话互动积分', unit: '分/次', icon: 'bi-chat-dots', iconBg: 'bg-success bg-opacity-10 text-success', type: 'number', min: 0, max: 100 },
+            { key: 'dialogue_daily_limit', label: '对话积分每日上限', unit: '分/天', icon: 'bi-calendar-check', iconBg: 'bg-info bg-opacity-10 text-info', type: 'number', min: 0, max: 1000 },
+            { key: 'share_points', label: '分享者获得积分', unit: '分/次', icon: 'bi-share', iconBg: 'bg-warning bg-opacity-10 text-warning', type: 'number', min: 0, max: 500 },
+            { key: 'share_daily_limit', label: '分享积分每日上限', unit: '分/天', icon: 'bi-shield-check', iconBg: 'bg-danger bg-opacity-10 text-danger', type: 'number', min: 0, max: 1000 },
+            { key: 'checkin_points', label: '每日打卡积分', unit: '分/天', icon: 'bi-calendar-check', iconBg: 'bg-primary bg-opacity-10 text-primary', type: 'number', min: 0, max: 100 },
+            { key: 'checkin_3day_bonus', label: '连续3天额外奖励', unit: '分', icon: 'bi-stars', iconBg: 'bg-success bg-opacity-10 text-success', type: 'number', min: 0, max: 500 },
+            { key: 'checkin_7day_bonus', label: '连续7天额外奖励', unit: '分', icon: 'bi-trophy', iconBg: 'bg-warning bg-opacity-10 text-warning', type: 'number', min: 0, max: 1000 }
+        ];
+
+        const switchSchema = [
+            { key: 'enable_dialogue_points', label: '启用对话互动积分', icon: 'bi-chat-dots', iconBg: 'bg-success bg-opacity-10 text-success', desc: '用户每次有效对话可获得积分' },
+            { key: 'enable_share_points', label: '启用分享推广积分', icon: 'bi-share', iconBg: 'bg-primary bg-opacity-10 text-primary', desc: '用户分享后可获得积分奖励' },
+            { key: 'enable_checkin_points', label: '启用每日打卡积分', icon: 'bi-calendar-check', iconBg: 'bg-warning bg-opacity-10 text-warning', desc: '用户每日打卡可获得积分' },
+            { key: 'enable_shop', label: '启用积分商城', icon: 'bi-shop', iconBg: 'bg-danger bg-opacity-10 text-danger', desc: '用户可使用积分兑换商品' }
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+        });
+
+        async function loadConfig() {
+            try {
+                const resp = await fetch('/api/admin/points-config');
+                const data = await resp.json();
+                if (data.success) {
+                    currentConfig = data.config || {};
+                    renderConfig();
+                    renderSwitches();
+                }
+            } catch (e) {
+                console.error('加载配置失败:', e);
+                showToast('加载配置失败', 'error');
+            }
+        }
+
+        function renderConfig() {
+            const container = document.getElementById('configList');
+            container.innerHTML = configSchema.map(item => {
+                const val = currentConfig[item.key] !== undefined ? currentConfig[item.key] : getDefaultValue(item.key);
+                return `
+                <div class="config-item">
+                    <div class="config-label">
+                        <div class="config-icon ${item.iconBg}">
+                            <i class="bi ${item.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="font-size:0.9rem;">${item.label}</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="number" class="form-control form-control-sm text-end" style="width:100px;"
+                               id="cfg_${item.key}" value="${val}" min="${item.min}" max="${item.max}">
+                        <span class="text-muted" style="font-size:0.8rem;min-width:50px;">${item.unit}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderSwitches() {
+            const container = document.getElementById('switchList');
+            container.innerHTML = switchSchema.map(item => {
+                const checked = currentConfig[item.key] !== false ? 'checked' : '';
+                return `
+                <div class="config-item">
+                    <div class="config-label">
+                        <div class="config-icon ${item.iconBg}">
+                            <i class="bi ${item.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="font-size:0.9rem;">${item.label}</div>
+                            <div class="help-text">${item.desc}</div>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="sw_${item.key}" ${checked}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>`;
+            }).join('');
+        }
+
+        function getDefaultValue(key) {
+            const defaults = {
+                'initial_points': 100,
+                'dialogue_points': 5,
+                'dialogue_daily_limit': 50,
+                'share_points': 20,
+                'share_daily_limit': 100,
+                'checkin_points': 10,
+                'checkin_3day_bonus': 20,
+                'checkin_7day_bonus': 50
+            };
+            return defaults[key] || 0;
+        }
+
+        async function saveConfig() {
+            const payload = {};
+            configSchema.forEach(item => {
+                payload[item.key] = parseInt(document.getElementById(`cfg_${item.key}`).value) || 0;
+            });
+            switchSchema.forEach(item => {
+                payload[item.key] = document.getElementById(`sw_${item.key}`).checked;
+            });
+
+            try {
+                const resp = await fetch('/api/admin/points-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    currentConfig = payload;
+                    showToast('配置已保存');
+                } else {
+                    showToast(data.message || '保存失败', 'error');
+                }
+            } catch (e) {
+                showToast('请求失败', 'error');
+            }
+        }
+
+        function resetConfig() {
+            if (!confirm('确定要重置为默认配置吗？')) return;
+            configSchema.forEach(item => {
+                const el = document.getElementById(`cfg_${item.key}`);
+                if (el) el.value = getDefaultValue(item.key);
+            });
+            switchSchema.forEach(item => {
+                const el = document.getElementById(`sw_${item.key}`);
+                if (el) el.checked = true;
+            });
+            showToast('已重置为默认值，请保存');
+        }
+
+        function showToast(msg, type='success') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast show ${type==='success'?'bg-success':'bg-danger'} text-white`;
+            t.innerHTML = `<div class="toast-body">${msg}</div>`;
+            t.style.minWidth = '200px';
+            c.appendChild(t);
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+        }
+    </script>
+</body>
+</html>

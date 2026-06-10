@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 知识库调用记录</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(67,233,123,0.2);
+            border-left: 3px solid #43e97b;
+        }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; text-align: center; }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .content-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .content-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 16px 20px;
+        }
+        .call-row {
+            padding: 14px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .call-row:hover { background: #fafbfc; }
+        .call-row:last-child { border-bottom: none; }
+        .query-text {
+            color: #333;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .intent-badge {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .intent-recommendation { background: #e3f2fd; color: #1976d2; }
+        .intent-consult { background: #f3e5f5; color: #7b1fa2; }
+        .intent-query { background: #e8f5e9; color: #388e3c; }
+        .intent-other { background: #fff3e0; color: #f57c00; }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .stats-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% set active_page = '/admin/knowledge/call-records' %}{% include '_sidebar.html' %}
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4><i class="bi bi-clock-history me-2"></i>知识库调用记录</h4>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                    </button>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="totalCalls">0</div>
+                            <div class="stats-label">总调用次数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="stats-number" id="todayCalls">0</div>
+                            <div class="stats-label">今日调用</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div class="stats-number" id="avgResults">0</div>
+                            <div class="stats-label">平均结果数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                            <div class="stats-number" id="avgTime">0ms</div>
+                            <div class="stats-label">平均响应时间</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 调用记录列表 -->
+                <div class="card content-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-ul me-2"></i>调用记录列表</span>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="intentFilter" style="width: 120px;" onchange="filterCalls()">
+                                <option value="">全部意图</option>
+                                <option value="recommendation">产品推荐</option>
+                                <option value="consult">健康咨询</option>
+                                <option value="query">知识查询</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm" id="searchQuery" placeholder="搜索查询内容..." style="width: 200px;" onkeyup="filterCalls()">
+                        </div>
+                    </div>
+                    <div class="card-body" id="callsContainer">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="text-muted mt-3">正在加载调用记录...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allCalls = [];
+
+        // 获取意图样式
+        function getIntentClass(intent) {
+            if (intent === 'recommendation') return 'intent-recommendation';
+            if (intent === 'consult') return 'intent-consult';
+            if (intent === 'query') return 'intent-query';
+            return 'intent-other';
+        }
+
+        // 获取意图显示文本
+        function getIntentText(intent) {
+            if (intent === 'recommendation') return '产品推荐';
+            if (intent === 'consult') return '健康咨询';
+            if (intent === 'query') return '知识查询';
+            return intent || '其他';
+        }
+
+        // 格式化时间
+        function formatTime(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            return date.toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 截断文本
+        function truncate(text, maxLength) {
+            if (!text) return '-';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        // 加载调用记录
+        async function loadCalls() {
+            try {
+                const resp = await fetch('/api/v2/kb/call-records?limit=100');
+                const data = await resp.json();
+                
+                if (data.success) {
+                    allCalls = data.records || [];
+                    renderCalls(allCalls);
+                    updateStats(allCalls);
+                } else {
+                    document.getElementById('callsContainer').innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="bi bi-exclamation-circle" style="font-size:3rem; color:#dc3545;"></i>
+                            <p class="text-muted mt-3">加载失败: ${data.error || '未知错误'}</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                document.getElementById('callsContainer').innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-exclamation-circle" style="font-size:3rem; color:#dc3545;"></i>
+                        <p class="text-muted mt-3">网络错误: ${e.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染调用记录
+        function renderCalls(calls) {
+            const container = document.getElementById('callsContainer');
+            
+            if (calls.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size:3rem; color:#ccc;"></i>
+                        <p class="text-muted mt-3">暂无调用记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="row mb-2" style="font-size:0.8rem; color:#888; font-weight:600;">
+                    <div class="col-md-2">时间</div>
+                    <div class="col-md-3">查询内容</div>
+                    <div class="col-md-1">意图</div>
+                    <div class="col-md-2">匹配产品</div>
+                    <div class="col-md-1 text-center">结果数</div>
+                    <div class="col-md-1 text-center">响应时间</div>
+                    <div class="col-md-2">会话ID</div>
+                </div>
+            `;
+
+            calls.forEach(call => {
+                const intentClass = getIntentClass(call.intent);
+                const intentText = getIntentText(call.intent);
+                const productNames = call.product_names && call.product_names.length > 0 
+                    ? call.product_names.join(', ') 
+                    : (call.product_ids || []).join(', ');
+                
+                html += `
+                    <div class="row call-row align-items-center">
+                        <div class="col-md-2">
+                            <small class="text-muted">${formatTime(call.timestamp)}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="query-text" title="${call.query}">${truncate(call.query, 30)}</div>
+                        </div>
+                        <div class="col-md-1">
+                            <span class="intent-badge ${intentClass}">${intentText}</span>
+                        </div>
+                        <div class="col-md-2">
+                            <small class="text-muted" title="${productNames}">${truncate(productNames, 25)}</small>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <span class="badge bg-primary">${call.results_count || 0}</span>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <small class="text-muted">${call.response_time_ms || 0}ms</small>
+                        </div>
+                        <div class="col-md-2">
+                            <small class="text-muted" style="font-family: monospace;">${truncate(call.session_id, 20)}</small>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 更新统计
+        function updateStats(calls) {
+            document.getElementById('totalCalls').textContent = calls.length;
+            
+            // 今日调用
+            const today = new Date().toDateString();
+            const todayCalls = calls.filter(c => new Date(c.timestamp).toDateString() === today).length;
+            document.getElementById('todayCalls').textContent = todayCalls;
+            
+            // 平均结果数
+            const avgResults = calls.length > 0 
+                ? (calls.reduce((sum, c) => sum + (c.results_count || 0), 0) / calls.length).toFixed(1)
+                : 0;
+            document.getElementById('avgResults').textContent = avgResults;
+            
+            // 平均响应时间
+            const avgTime = calls.length > 0 
+                ? Math.round(calls.reduce((sum, c) => sum + (c.response_time_ms || 0), 0) / calls.length)
+                : 0;
+            document.getElementById('avgTime').textContent = avgTime + 'ms';
+        }
+
+        // 筛选调用记录
+        function filterCalls() {
+            const intentFilter = document.getElementById('intentFilter').value;
+            const searchQuery = document.getElementById('searchQuery').value.toLowerCase();
+            
+            let filtered = allCalls;
+            
+            if (intentFilter) {
+                filtered = filtered.filter(c => c.intent === intentFilter);
+            }
+            
+            if (searchQuery) {
+                filtered = filtered.filter(c => 
+                    (c.query || '').toLowerCase().includes(searchQuery) ||
+                    (c.session_id || '').toLowerCase().includes(searchQuery)
+                );
+            }
+            
+            renderCalls(filtered);
+        }
+
+        // 页面加载时获取数据
+        document.addEventListener('DOMContentLoaded', loadCalls);
+    </script>
+</body>
+</html>
