@@ -3,8 +3,8 @@ nixPkgs = ["python310"]
 
 [phases.build]
 cmds = [
-    "pip install -r app/requirements.txt"
+    "pip install -r requirements.txt"
 ]
 
 [start]
-cmd = "cd app && python web_interface.py"
+cmd = "python web_interface.py"

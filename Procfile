@@ -1,1 +1,1 @@
-web: cd app && python web_interface.py
+web: python web_interface.py
